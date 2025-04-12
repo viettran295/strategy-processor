@@ -1,0 +1,15 @@
+[package]
+name = "str-proc"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+actix-web = "4.10.2"
+dotenv = "0.15.0"
+env_logger = "0.11.8"
+log = "0.4.27"
+polars = { version = "0.46.0", features = ["json", "serde"] }
+reqwest = "0.12.15"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+tokio = { version = "1.44.2", features = ["macros", "rt-multi-thread"] }
