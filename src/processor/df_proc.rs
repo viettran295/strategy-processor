@@ -38,8 +38,11 @@ impl DfProcessor {
         let mut response: Vec<StockDataPoint > = Vec::new();
         for row in 0..df.height() {
             let mut temp = StockDataPoint { 
+                datetime: String::new(),
+                open: String::new(),
                 close: String::new(),
-                datetime: String::new()
+                high: String::new(),
+                low: String::new(),
             };
             for col in df.get_columns() {
                 match col.dtype() {

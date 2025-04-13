@@ -7,7 +7,10 @@ use crate::config::TwelDataCfg;
 #[derive(Deserialize, Serialize, Debug)]
 pub struct StockDataPoint {
     pub datetime: String,
+    pub open: String,
     pub close: String,
+    pub high: String,
+    pub low: String
 }
 
 #[derive(Deserialize, Debug)]
@@ -34,7 +37,12 @@ impl StockFetcher {
         }
     }
 
-    pub async fn fetch_prices(&self, stock: String, start_date: Option<&str>, end_date: Option<&str>) -> Result<Vec<StockDataPoint>, Box<dyn Error>> {
+    pub async fn fetch_prices(
+        &self, 
+        stock: String, 
+        start_date: Option<&str>, 
+        end_date: Option<&str>
+    ) -> Result<String, Box<dyn Error>> {
         let start_date = start_date.unwrap_or(&self.start_date);
         let end_date = end_date.unwrap_or(&self.end_date);
         let api_url = format!(
@@ -45,8 +53,7 @@ impl StockFetcher {
         let response = reqwest::get(api_url).await?;
         if response.status().is_success() {
             let body = response.text().await?;
-            let data: Result<TwelveDataResponse, serde_json::Error> = serde_json::from_str(&body);
-            return Ok(data.unwrap().values);
+            return Ok(body);
         } else {
             return Err(format!("Failed to fetch data for '{}'. Status: {}", 
                                 stock, response.status()).into())
