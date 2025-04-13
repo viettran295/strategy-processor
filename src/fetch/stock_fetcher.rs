@@ -1,5 +1,7 @@
 use std::error::Error;
 use serde::{Deserialize, Serialize};
+use chrono::{Utc, Duration};
+
 use crate::config::TwelDataCfg;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -15,21 +17,31 @@ pub struct TwelveDataResponse {
 
 pub struct StockFetcher {
     pub config: TwelDataCfg,
+    pub start_date: String,
+    pub end_date: String,
 }
 
 impl StockFetcher {
     pub fn new() -> Self {
         let cfg = TwelDataCfg::new();
+        let end_date = Utc::now().date_naive();
+        // By default is 3 years data
+        let start_date = end_date - Duration::days(3 * 365);
         return Self {
-            config: cfg
+            config: cfg,
+            start_date: start_date.to_string(),
+            end_date: end_date.to_string()
         }
     }
 
-    pub async fn fetch_prices(&self, stock: String) -> Result<Vec<StockDataPoint>, Box<dyn Error>> {
+    pub async fn fetch_prices(&self, stock: String, start_date: Option<&str>, end_date: Option<&str>) -> Result<Vec<StockDataPoint>, Box<dyn Error>> {
+        let start_date = start_date.unwrap_or(&self.start_date);
+        let end_date = end_date.unwrap_or(&self.end_date);
         let api_url = format!(
-            "{}symbol={}&interval={}&outputsize={}&apikey={}",
-            self.config.url, stock, self.config.interval, self.config.days, self.config.api_key
+            "{}symbol={}&interval={}&start_date={}&end_date={}&apikey={}",
+            self.config.url, stock, self.config.interval, start_date, end_date, self.config.api_key
         );
+        
         let response = reqwest::get(api_url).await?;
         if response.status().is_success() {
             let body = response.text().await?;

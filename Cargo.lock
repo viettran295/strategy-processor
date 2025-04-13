@@ -521,8 +521,10 @@ checksum = "1a7964611d71df112cb1730f2ee67324fcf4d0fc6606acbbe9bfe06df124637c"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-link",
 ]
 
@@ -2994,6 +2996,7 @@ name = "str-proc"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "chrono",
  "dotenv",
  "env_logger",
  "log",

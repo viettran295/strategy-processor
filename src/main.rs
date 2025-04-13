@@ -11,7 +11,7 @@ use processor::DfProcessor;
 async fn get_price(symbol: web::Path<String>) -> HttpResponse {
     let fetcher = StockFetcher::new();
 
-    match fetcher.fetch_prices(symbol.to_string()).await {
+    match fetcher.fetch_prices(symbol.to_string(), None, None).await {
         Ok(stock_data) => {
             let mut df_proc = DfProcessor::new();
 
