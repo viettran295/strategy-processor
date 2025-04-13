@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use crate::fetch::StockDataPoint;
+
 use log::{error, info};
 use polars::prelude::*;
 
@@ -12,6 +15,7 @@ impl DfProcessor {
             df: None
         }
     }
+
     pub fn to_df(&mut self, prices: Vec<f32>, datetime: &[&str]) {
         if prices.len() != datetime.len() {
             error!("Length of 2 columns must be equal");
@@ -27,5 +31,44 @@ impl DfProcessor {
         } else {
             error!("Error converting dataframe")
         }
+    }
+
+    pub fn df_to_json(df: &DataFrame) -> String {
+        let mut values_response = HashMap::new();
+        let mut response: Vec<StockDataPoint > = Vec::new();
+        for row in 0..df.height() {
+            let mut temp = StockDataPoint { 
+                close: String::new(),
+                datetime: String::new()
+            };
+            for col in df.get_columns() {
+                match col.dtype() {
+                    DataType::Float32 => {
+                        let value = df.column(col.name())
+                                                .unwrap()
+                                                .f32()
+                                                .unwrap()
+                                                .get(row)
+                                                .unwrap()
+                                                .to_string();
+                        temp.close = value
+                    }
+                    DataType::String => {
+                        let value = df.column(col.name())
+                                                .unwrap()
+                                                .str()
+                                                .unwrap()
+                                                .get(row)
+                                                .unwrap()
+                                                .to_string();
+                        temp.datetime = value
+                    }
+                    _ => continue
+                }
+            }
+            response.push(temp);
+        }
+        values_response.insert("values", response);
+        return serde_json::to_string(&values_response).unwrap();
     }
 }

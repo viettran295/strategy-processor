@@ -1,11 +1,11 @@
 use std::error::Error;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use crate::config::TwelDataCfg;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct StockDataPoint {
+    pub datetime: String,
     pub close: String,
-    pub datetime: String
 }
 
 #[derive(Deserialize, Debug)]

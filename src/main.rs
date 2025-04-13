@@ -7,7 +7,6 @@ use env_logger;
 use log::error;
 use fetch::StockFetcher;
 use processor::DfProcessor;
-use polars::prelude::*;
 
 async fn get_price(symbol: web::Path<String>) -> HttpResponse {
     let fetcher = StockFetcher::new();
@@ -15,7 +14,6 @@ async fn get_price(symbol: web::Path<String>) -> HttpResponse {
     match fetcher.fetch_prices(symbol.to_string()).await {
         Ok(stock_data) => {
             let mut df_proc = DfProcessor::new();
-            let mut api_response = Vec::new();
 
             let close_prices: Result<Vec<f32>, _> = stock_data.iter()
                 .map(|p| p.close.parse::<f32>())
@@ -35,40 +33,14 @@ async fn get_price(symbol: web::Path<String>) -> HttpResponse {
 
             df_proc.to_df(close_prices, &datetime);
             if let Some(df) = &df_proc.df {
-                let mut tmp_str = String::new();
-                for col in df.get_columns() {
-                    let value: Vec<String> = match col.dtype() {
-                        DataType::Float32 => {
-                            col.f32()
-                                .unwrap()
-                                .to_vec()
-                                .iter()
-                                .map(|v| v.unwrap().to_string())
-                                .collect::<Vec<String>>()
-                        },
-                        DataType::Int32 => {
-                            col.i32()
-                                .unwrap()
-                                .to_vec()
-                                .iter()
-                                .map(|v| v.unwrap().to_string())
-                                .collect::<Vec<String>>()
-                        },
-                        DataType::String => col.str()
-                                                .unwrap()
-                                                .into_iter()
-                                                .map(|v| v.unwrap().to_string())
-                                                .collect::<Vec<String>>(),
-                        _ => continue,
-                    };
-                    tmp_str.push_str(&format!("{}: {:?}, ", col.name(), value));
-                }
-                api_response.push(tmp_str.clone());
+                let json_response = DfProcessor::df_to_json(&df);
+                return HttpResponse::Ok()
+                    .content_type("application/json")
+                    .body(json_response);
+            } else {
+                return HttpResponse::InternalServerError()
+                    .body("Failed to get Dataframe")
             }
-            let json_response = serde_json::to_string(&api_response).unwrap();
-            return HttpResponse::Ok()
-                .content_type("application/json")
-                .body(json_response);
         }
         Err(e) => {
             error!("Error getting stock prices: {}", e);
