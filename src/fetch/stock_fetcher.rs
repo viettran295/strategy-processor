@@ -40,11 +40,11 @@ impl StockFetcher {
     pub async fn fetch_prices(
         &self, 
         stock: String, 
-        start_date: Option<&str>, 
-        end_date: Option<&str>
+        start_date: Option<String>, 
+        end_date: Option<String>
     ) -> Result<String, Box<dyn Error>> {
-        let start_date = start_date.unwrap_or(&self.start_date);
-        let end_date = end_date.unwrap_or(&self.end_date);
+        let start_date = start_date.unwrap_or(self.start_date.clone());
+        let end_date = end_date.unwrap_or(self.end_date.clone());
         let api_url = format!(
             "{}symbol={}&interval={}&start_date={}&end_date={}&apikey={}",
             self.config.url, stock, self.config.interval, start_date, end_date, self.config.api_key
@@ -56,7 +56,7 @@ impl StockFetcher {
             return Ok(body);
         } else {
             return Err(format!("Failed to fetch data for '{}'. Status: {}", 
-                                stock, response.status()).into())
+                                stock, response.status()).into());
         }
     }
 }
