@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::fetch::StockDataPoint;
+use crate::fetch::{StockDataPoint, TwelveDataResponse};
 
 use log::{error, info};
 use polars::prelude::*;
@@ -16,20 +16,32 @@ impl DfProcessor {
         }
     }
 
-    pub fn to_df(&mut self, prices: Vec<f32>, datetime: &[&str]) {
+    pub fn to_df(&mut self, twelve_data_resp: String) -> Result<(), Box<dyn std::error::Error>> {
+        let data: TwelveDataResponse = serde_json::from_str(twelve_data_resp.as_str())?;
+        let mut  datetime: Vec<String> = Vec::new();
+        let mut prices: Vec<f32> = Vec::new();
+        for data_point in data.values {
+            datetime.push(data_point.datetime);
+            match data_point.close.parse::<f32>() {
+                Ok(float_val) => prices.push(float_val),
+                Err(e) => {
+                    error!("Error converting price values: {}", e);
+                }
+            }
+        }
         if prices.len() != datetime.len() {
-            error!("Length of 2 columns must be equal");
-            return
+            return Err("Length of 2 columns must be equal".into());
         }
         
         if let Ok(df) = DataFrame::new(vec![
-            Series::new("close".into(), prices).into(),
             Series::new("datetime".into(), datetime).into(),
+            Series::new("close".into(), prices).into(),
         ]) {
             self.df = Some(df);
             info!("Converted data to dataframe");
+            return Ok(());
         } else {
-            error!("Error converting dataframe")
+            Err("Error converting dataframe".into())
         }
     }
 
