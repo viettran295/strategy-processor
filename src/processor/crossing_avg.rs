@@ -1,7 +1,5 @@
-use std::fmt::format;
-
 use polars::prelude::*;
-use log::{error, info};
+use log::info;
 
 pub struct CrossingAvg {
     pub ma_type: String,
@@ -36,9 +34,10 @@ impl CrossingAvg {
                 self.df = df.clone()
                     .lazy()
                     .with_column(
-                        col("close").rolling_mean(self.ma_options.clone()).alias(ma_name),
+                        col("close").rolling_mean(self.ma_options.clone()).alias(ma_name.clone()),
                     )
                     .collect().ok();
+                info!("Calculated {}", ma_name);
                 return Ok(());
             },
             None => return Err("Dataframe is None".into())
@@ -87,6 +86,7 @@ impl CrossingAvg {
                         .alias(&signal_name)
                     ])
                     .collect().ok();
+                info!("Calculated crossing average signal: {}", signal_name);
                 Ok(())
             }
 }
