@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use crate::fetch::{StockDataPoint, TwelveDataResponse};
+use crate::fetch::TwelveDataResponse;
+use crate::processor::CrossingMAResponse;
 
 use log::{error, info};
 use polars::prelude::*;
@@ -47,26 +48,36 @@ impl DfProcessor {
 
     pub fn df_to_json(df: &DataFrame) -> String {
         let mut values_response = HashMap::new();
-        let mut response: Vec<StockDataPoint > = Vec::new();
+        let mut response: Vec<CrossingMAResponse> = Vec::new();
         for row in 0..df.height() {
-            let mut temp = StockDataPoint { 
-                datetime: String::new(),
-                open: String::new(),
-                close: String::new(),
-                high: String::new(),
-                low: String::new(),
-            };
+            let mut temp = CrossingMAResponse::new();
             for col in df.get_columns() {
                 match col.dtype() {
                     DataType::Float32 => {
                         let value = df.column(col.name())
+                                        .unwrap()
+                                        .f32()
+                                        .unwrap()
+                                        .get(row)
+                                        .unwrap()
+                                        .to_string();
+                        if col.name().contains("close") {
+                                temp.close = value
+                        } else if col.name().contains("short") {
+                            temp.short_ma = value;
+                        } else if col.name().contains("long") {
+                            temp.long_ma = value;
+                        }
+                    }
+                    DataType::Int32 => {
+                        let value = df.column(col.name())
                                                 .unwrap()
-                                                .f32()
+                                                .i32()
                                                 .unwrap()
                                                 .get(row)
                                                 .unwrap()
                                                 .to_string();
-                        temp.close = value
+                        temp.signal = value
                     }
                     DataType::String => {
                         let value = df.column(col.name())

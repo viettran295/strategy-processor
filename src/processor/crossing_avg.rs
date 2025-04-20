@@ -1,10 +1,33 @@
 use polars::prelude::*;
 use log::info;
+use serde::{Deserialize, Serialize};
 
+#[derive(Deserialize, Serialize, Debug)]
 pub struct CrossingAvg {
     pub ma_type: String,
     pub df: Option<DataFrame>,
     pub ma_options: RollingOptionsFixedWindow,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct CrossingMAResponse {
+    pub datetime: String,
+    pub close: String,
+    pub short_ma: String,
+    pub long_ma: String,
+    pub signal: String
+}
+
+impl CrossingMAResponse {
+    pub fn new() -> Self {
+        CrossingMAResponse { 
+            datetime: String::new(),
+            close: String::new(),
+            short_ma: String::new(),
+            long_ma: String::new(),
+            signal: String::new()
+        }
+    }
 }
 
 impl CrossingAvg {
@@ -25,10 +48,9 @@ impl CrossingAvg {
 }
 
 impl CrossingAvg {
-    pub fn calc_ma(&mut self, window_size: usize) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn calc_ma(&mut self, window_size: usize, ma_name: String) -> Result<(), Box<dyn std::error::Error>> {
         match &mut self.df {
             Some(df) => {
-                let ma_name = format!("{}_{}", self.ma_type, window_size);
                 self.ma_options.window_size = window_size;
                 // Implementation of calculating signal for moving average strategy
                 self.df = df.clone()
@@ -53,15 +75,15 @@ impl CrossingAvg {
                 }
 
                 let signal_name = format!("Sig_{}_{}_{}", self.ma_type, short_ma, long_ma);
-                let short_ma_name = format!("{}_{}", self.ma_type, short_ma);
-                let long_ma_name = format!("{}_{}", self.ma_type, long_ma);
+                let short_ma_name = format!("{}_short_{}", self.ma_type, short_ma);
+                let long_ma_name = format!("{}_long_{}", self.ma_type, long_ma);
 
                 // Calculate MAs up front
                 if ! self.df.as_ref().unwrap().column(short_ma_name.as_str()).is_ok() {
-                    self.calc_ma(short_ma)?;
+                    self.calc_ma(short_ma, short_ma_name.clone())?;
                 }
                 if ! self.df.as_ref().unwrap().column(long_ma_name.as_str()).is_ok() {
-                    self.calc_ma(long_ma)?;
+                    self.calc_ma(long_ma, long_ma_name.clone())?;
                 }
 
                 // Get reference to current dataframe
