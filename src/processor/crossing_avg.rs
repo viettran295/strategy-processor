@@ -18,6 +18,9 @@ pub struct DfColumns {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct DfData {
     pub datetime: String,
+    pub high: String,
+    pub low: String,
+    pub open: String,
     pub close: String,
     pub short_ma: String,
     pub long_ma: String,
@@ -43,6 +46,9 @@ impl DfData {
     pub fn new() -> Self {
         DfData { 
             datetime: String::new(),
+            high: String::new(),
+            low: String::new(),
+            open: String::new(),
             close: String::new(),
             short_ma: String::new(),
             long_ma: String::new(),

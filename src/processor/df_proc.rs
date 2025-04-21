@@ -1,7 +1,7 @@
 use crate::fetch::TwelveDataResponse;
 use crate::processor::{CrossingMAResponse, DfData, DfColumns};
 
-use log::{error, info};
+use log::{debug, error, info};
 use polars::prelude::*;
 
 #[derive(Clone, Debug)]
@@ -19,23 +19,44 @@ impl DfProcessor {
     pub fn to_df(&mut self, twelve_data_resp: String) -> Result<(), Box<dyn std::error::Error>> {
         let data: TwelveDataResponse = serde_json::from_str(twelve_data_resp.as_str())?;
         let mut  datetime: Vec<String> = Vec::new();
-        let mut prices: Vec<f32> = Vec::new();
+        let mut high: Vec<f32> = Vec::new();
+        let mut low: Vec<f32> = Vec::new();
+        let mut open: Vec<f32> = Vec::new();
+        let mut close: Vec<f32> = Vec::new();
         for data_point in data.values {
             datetime.push(data_point.datetime);
+            match data_point.high.parse::<f32>() {
+                Ok(float_val) => high.push(float_val),
+                Err(e) => {
+                    error!("Error converting price values: {}", e);
+                }
+            }
+            match data_point.low.parse::<f32>() {
+                Ok(float_val) => low.push(float_val),
+                Err(e) => {
+                    error!("Error converting price values: {}", e);
+                }
+            }
+            match data_point.open.parse::<f32>() {
+                Ok(float_val) => open.push(float_val),
+                Err(e) => {
+                    error!("Error converting price values: {}", e);
+                }
+            }
             match data_point.close.parse::<f32>() {
-                Ok(float_val) => prices.push(float_val),
+                Ok(float_val) => close.push(float_val),
                 Err(e) => {
                     error!("Error converting price values: {}", e);
                 }
             }
         }
-        if prices.len() != datetime.len() {
-            return Err("Length of 2 columns must be equal".into());
-        }
-        
+
         if let Ok(df) = DataFrame::new(vec![
             Series::new("datetime".into(), datetime).into(),
-            Series::new("close".into(), prices).into(),
+            Series::new("high".into(), high).into(),
+            Series::new("low".into(), low).into(),
+            Series::new("open".into(), open).into(),
+            Series::new("close".into(), close).into(),
         ]) {
             self.df = Some(df);
             info!("Converted data to dataframe");
@@ -70,13 +91,16 @@ impl DfProcessor {
                                         .get(row)
                                         .unwrap()
                                         .to_string();
-                        if col.name().contains("close") {
-                                temp.close = value
-                        } else if col.name().contains("short") {
-                            temp.short_ma = value;
-                        } else if col.name().contains("long") {
-                            temp.long_ma = value;
+                        match col.name().as_str() {
+                            "high" => temp.high = value,
+                            "low" => temp.low = value,
+                            "open" => temp.open = value,
+                            "close" => temp.close = value,
+                            name if name.contains("short") => temp.short_ma = value,
+                            name if name.contains("long") => temp.long_ma = value,
+                            _ => debug!("No matching column name")
                         }
+
                     }
                     DataType::Int32 => {
                         let value = df.column(col.name())
