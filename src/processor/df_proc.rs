@@ -1,6 +1,5 @@
-use std::collections::HashMap;
 use crate::fetch::TwelveDataResponse;
-use crate::processor::CrossingMAResponse;
+use crate::processor::{CrossingMAResponse, DfData, DfColumns};
 
 use log::{error, info};
 use polars::prelude::*;
@@ -47,10 +46,20 @@ impl DfProcessor {
     }
 
     pub fn df_to_json(df: &DataFrame) -> String {
-        let mut values_response = HashMap::new();
-        let mut response: Vec<CrossingMAResponse> = Vec::new();
+        let mut cols_response = DfColumns::new();
+        let mut data_response: Vec<DfData> = Vec::new();
+        let column_names = df.get_columns()
+                            .iter()
+                            .map(|col| col.name().to_string())
+                            .collect();
+        let column_types = df.get_columns()
+                            .iter()
+                            .map(|col| col.dtype().to_string())
+                            .collect();
+        cols_response.column_names = column_names;
+        cols_response.column_types = column_types;
         for row in 0..df.height() {
-            let mut temp = CrossingMAResponse::new();
+            let mut temp = DfData::new();
             for col in df.get_columns() {
                 match col.dtype() {
                     DataType::Float32 => {
@@ -92,9 +101,9 @@ impl DfProcessor {
                     _ => continue
                 }
             }
-            response.push(temp);
+            data_response.push(temp);
         }
-        values_response.insert("values", response);
-        return serde_json::to_string(&values_response).unwrap();
+        let response = CrossingMAResponse::new(cols_response, data_response);
+        return serde_json::to_string(&response).unwrap();
     }
 }

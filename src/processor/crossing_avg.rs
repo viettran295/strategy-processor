@@ -10,7 +10,13 @@ pub struct CrossingAvg {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct CrossingMAResponse {
+pub struct DfColumns {
+    pub column_names: Vec<String>,
+    pub column_types: Vec<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct DfData {
     pub datetime: String,
     pub close: String,
     pub short_ma: String,
@@ -18,14 +24,38 @@ pub struct CrossingMAResponse {
     pub signal: String
 }
 
-impl CrossingMAResponse {
+#[derive(Deserialize, Serialize, Debug)]
+pub struct CrossingMAResponse {
+    pub columns: DfColumns,
+    pub data: Vec<DfData>,
+}
+
+impl DfColumns {
     pub fn new() -> Self {
-        CrossingMAResponse { 
+        DfColumns {
+            column_names: Vec::new(),
+            column_types: Vec::new()
+        }
+    }
+}
+
+impl DfData {
+    pub fn new() -> Self {
+        DfData { 
             datetime: String::new(),
             close: String::new(),
             short_ma: String::new(),
             long_ma: String::new(),
             signal: String::new()
+        }
+    }
+}
+
+impl CrossingMAResponse {
+    pub fn new(df_columns: DfColumns, df_data: Vec<DfData>) -> Self {
+        CrossingMAResponse {
+            columns: df_columns,
+            data: df_data
         }
     }
 }
