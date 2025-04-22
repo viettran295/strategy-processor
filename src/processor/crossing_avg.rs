@@ -130,16 +130,16 @@ impl CrossingAvg {
                     .with_columns([
                         when(
                             col(&short_ma_name).gt(col(&long_ma_name)).and(
-                                col(&short_ma_name).shift(lit(1)).gt(col(&long_ma_name))
+                                col(&short_ma_name).shift(lit(1)).lt_eq(col(&long_ma_name))
                             )
                         )
-                        .then(lit(1))
+                        .then(lit(-1))
                         .when(
                             col(&short_ma_name).lt(col(&long_ma_name)).and(
                                 col(&short_ma_name).shift(lit(1)).gt_eq(col(&long_ma_name))
                             )
                         )
-                        .then(lit(-1))
+                        .then(lit(1))
                         .otherwise(lit(0))
                         .alias(&signal_name)
                     ])
