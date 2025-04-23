@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 pub struct CrossingAvg {
     pub ma_type: String,
     pub df: Option<DataFrame>,
-    pub ma_options: RollingOptionsFixedWindow,
+    pub sma_options: RollingOptionsFixedWindow,
+    pub ewm_options: EWMOptions,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -67,34 +68,55 @@ impl CrossingMAResponse {
 }
 
 impl CrossingAvg {
-    pub fn new(df: DataFrame) -> Self {
-        let ma_options = RollingOptionsFixedWindow {
+    pub fn new(df: DataFrame, ma_type: &str) -> Self {
+        let sma_options = RollingOptionsFixedWindow {
             window_size: 1,
             min_periods: 1,
             weights: None,
             center: false,
             fn_params: None,
         };
+        let ewm_options = EWMOptions {
+            alpha: 1.0,
+            adjust: true,
+            bias: false,
+            min_periods: 1,
+            ignore_nulls: true,
+        };
         CrossingAvg { 
-            ma_type: "SMA".to_string(),
             df: Some(df),
-            ma_options,
+            ma_type: ma_type.to_string(),
+            sma_options,
+            ewm_options
         }
     }
 }
 
 impl CrossingAvg {
-    pub fn calc_ma(&mut self, window_size: usize, ma_name: String) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn calc_ma(
+        &mut self, 
+        window_size: usize, 
+        ma_name: String, 
+        ma_type: &str
+    ) -> Result<(), Box<dyn std::error::Error>> {
         match &mut self.df {
             Some(df) => {
-                self.ma_options.window_size = window_size;
+                self.sma_options.window_size = window_size;
                 // Implementation of calculating signal for moving average strategy
-                self.df = df.clone()
-                    .lazy()
-                    .with_column(
-                        col("close").rolling_mean(self.ma_options.clone()).alias(ma_name.clone()),
-                    )
-                    .collect().ok();
+                if ma_type == "SMA" {
+                    self.df = df.clone()
+                        .lazy()
+                        .with_column(
+                            col("close").rolling_mean(self.sma_options.clone()).alias(ma_name.clone()),
+                        )
+                        .collect().ok();
+                } else if ma_type == "EWMA" {
+                    self.df = df.clone()
+                        .lazy()
+                        .with_column(
+                        col("close").ewm_mean(self.ewm_options.clone()).alias(ma_name.clone()),
+                    ).collect().ok();
+                }
                 info!("Calculated {}", ma_name);
                 return Ok(());
             },
@@ -104,7 +126,8 @@ impl CrossingAvg {
     pub fn calc_signal(
                 &mut self, 
                 short_ma: usize, 
-                long_ma: usize
+                long_ma: usize,
+                ma_type: &str
             ) -> Result<(), Box<dyn std::error::Error>> {
                 if self.df.is_none() {
                     return Err("Dataframe is None".into());
@@ -116,10 +139,10 @@ impl CrossingAvg {
 
                 // Calculate MAs up front
                 if ! self.df.as_ref().unwrap().column(short_ma_name.as_str()).is_ok() {
-                    self.calc_ma(short_ma, short_ma_name.clone())?;
+                    self.calc_ma(short_ma, short_ma_name.clone(), ma_type)?;
                 }
                 if ! self.df.as_ref().unwrap().column(long_ma_name.as_str()).is_ok() {
-                    self.calc_ma(long_ma, long_ma_name.clone())?;
+                    self.calc_ma(long_ma, long_ma_name.clone(), ma_type)?;
                 }
 
                 // Get reference to current dataframe
