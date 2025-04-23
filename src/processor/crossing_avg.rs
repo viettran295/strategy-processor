@@ -7,7 +7,7 @@ pub struct CrossingAvg {
     pub ma_type: String,
     pub df: Option<DataFrame>,
     pub sma_options: RollingOptionsFixedWindow,
-    pub ewm_options: EWMOptions,
+    pub ewma_options: EWMOptions,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -70,13 +70,13 @@ impl CrossingMAResponse {
 impl CrossingAvg {
     pub fn new(df: DataFrame, ma_type: &str) -> Self {
         let sma_options = RollingOptionsFixedWindow {
-            window_size: 1,
+            window_size: 3,
             min_periods: 1,
             weights: None,
             center: false,
             fn_params: None,
         };
-        let ewm_options = EWMOptions {
+        let ewma_options = EWMOptions {
             alpha: 1.0,
             adjust: true,
             bias: false,
@@ -87,7 +87,7 @@ impl CrossingAvg {
             df: Some(df),
             ma_type: ma_type.to_string(),
             sma_options,
-            ewm_options
+            ewma_options
         }
     }
 }
@@ -101,9 +101,9 @@ impl CrossingAvg {
     ) -> Result<(), Box<dyn std::error::Error>> {
         match &mut self.df {
             Some(df) => {
-                self.sma_options.window_size = window_size;
                 // Implementation of calculating signal for moving average strategy
                 if ma_type == "SMA" {
+                    self.sma_options.window_size = window_size;
                     self.df = df.clone()
                         .lazy()
                         .with_column(
@@ -111,10 +111,11 @@ impl CrossingAvg {
                         )
                         .collect().ok();
                 } else if ma_type == "EWMA" {
+                    self.ewma_options.alpha = 2.0 / (window_size + 1) as f64;
                     self.df = df.clone()
                         .lazy()
                         .with_column(
-                        col("close").ewm_mean(self.ewm_options.clone()).alias(ma_name.clone()),
+                        col("close").ewm_mean(self.ewma_options.clone()).fill_null(0).alias(ma_name.clone()),
                     ).collect().ok();
                 }
                 info!("Calculated {}", ma_name);
