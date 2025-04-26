@@ -13,6 +13,8 @@ pub struct DateParams {
 
 #[derive(Deserialize)]
 pub struct CrossingMAParams {
+    start_date: Option<String>,
+    end_date: Option<String>,
     short_ma: Option<usize>,
     long_ma: Option<usize>
 }
@@ -45,7 +47,10 @@ pub async fn get_ma_signal(
     query: Query<CrossingMAParams>
 ) -> HttpResponse {
         let fetcher = StockFetcher::new();
-        match fetcher.fetch_prices(symbol.to_string(), None, None).await {
+        let start_date = query.start_date.clone();
+        let end_date = query.end_date.clone();
+        
+        match fetcher.fetch_prices(symbol.to_string(), start_date, end_date).await {
             Ok(stock_data) => {
                 let mut df_proc = DfProcessor::new();
                 let short_ma = query.short_ma.clone().unwrap_or(20);
