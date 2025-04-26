@@ -1,6 +1,7 @@
 use polars::prelude::*;
 use log::info;
 use serde::{Deserialize, Serialize};
+use crate::processor::base::{DfBaseData, DfColumns};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct CrossingAvg {
@@ -11,18 +12,9 @@ pub struct CrossingAvg {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct DfColumns {
-    pub column_names: Vec<String>,
-    pub column_types: Vec<String>,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct DfData {
-    pub datetime: String,
-    pub high: String,
-    pub low: String,
-    pub open: String,
-    pub close: String,
+pub struct CrossingMAData {
+    #[serde(flatten)]
+    pub base_data: DfBaseData,
     pub short_ma: String,
     pub long_ma: String,
     pub signal: String
@@ -31,26 +23,14 @@ pub struct DfData {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct CrossingMAResponse {
     pub columns: DfColumns,
-    pub data: Vec<DfData>,
+    pub data: Vec<CrossingMAData>,
 }
 
-impl DfColumns {
+impl CrossingMAData {
     pub fn new() -> Self {
-        DfColumns {
-            column_names: Vec::new(),
-            column_types: Vec::new()
-        }
-    }
-}
-
-impl DfData {
-    pub fn new() -> Self {
-        DfData { 
-            datetime: String::new(),
-            high: String::new(),
-            low: String::new(),
-            open: String::new(),
-            close: String::new(),
+        let base_data = DfBaseData::new();
+        CrossingMAData { 
+            base_data,
             short_ma: String::new(),
             long_ma: String::new(),
             signal: String::new()
@@ -59,7 +39,7 @@ impl DfData {
 }
 
 impl CrossingMAResponse {
-    pub fn new(df_columns: DfColumns, df_data: Vec<DfData>) -> Self {
+    pub fn new(df_columns: DfColumns, df_data: Vec<CrossingMAData>) -> Self {
         CrossingMAResponse {
             columns: df_columns,
             data: df_data

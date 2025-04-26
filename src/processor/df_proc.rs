@@ -1,5 +1,5 @@
 use crate::fetch::TwelveDataResponse;
-use crate::processor::{CrossingMAResponse, DfData, DfColumns};
+use crate::processor::{CrossingMAResponse, CrossingMAData, DfColumns};
 
 use log::{debug, error, info};
 use polars::prelude::*;
@@ -68,7 +68,7 @@ impl DfProcessor {
 
     pub fn df_to_json(df: &DataFrame) -> String {
         let mut cols_response = DfColumns::new();
-        let mut data_response: Vec<DfData> = Vec::new();
+        let mut data_response: Vec<CrossingMAData> = Vec::new();
         let column_names = df.get_columns()
                             .iter()
                             .map(|col| col.name().to_string())
@@ -80,7 +80,7 @@ impl DfProcessor {
         cols_response.column_names = column_names;
         cols_response.column_types = column_types;
         for row in 0..df.height() {
-            let mut temp = DfData::new();
+            let mut temp = CrossingMAData::new();
             for col in df.get_columns() {
                 match col.dtype() {
                     DataType::Float32 => {
@@ -92,10 +92,10 @@ impl DfProcessor {
                                         .unwrap_or(0.0)
                                         .to_string();
                         match col.name().as_str() {
-                            "high" => temp.high = value,
-                            "low" => temp.low = value,
-                            "open" => temp.open = value,
-                            "close" => temp.close = value,
+                            "high" => temp.base_data.high = value,
+                            "low" => temp.base_data.low = value,
+                            "open" => temp.base_data.open = value,
+                            "close" => temp.base_data.close = value,
                             name if name.contains("short") && value == "0" => temp.short_ma = "NaN".to_string(),
                             name if name.contains("long") && value == "0" => temp.long_ma = "NaN".to_string(),
                             name if name.contains("short") && value != "0" => temp.short_ma = value,
@@ -122,7 +122,7 @@ impl DfProcessor {
                                                 .get(row)
                                                 .unwrap()
                                                 .to_string();
-                        temp.datetime = value
+                        temp.base_data.datetime = value
                     }
                     _ => continue
                 }
