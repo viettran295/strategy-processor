@@ -89,15 +89,17 @@ impl DfProcessor {
                                         .f32()
                                         .unwrap()
                                         .get(row)
-                                        .unwrap()
+                                        .unwrap_or(0.0)
                                         .to_string();
                         match col.name().as_str() {
                             "high" => temp.high = value,
                             "low" => temp.low = value,
                             "open" => temp.open = value,
                             "close" => temp.close = value,
-                            name if name.contains("short") => temp.short_ma = value,
-                            name if name.contains("long") => temp.long_ma = value,
+                            name if name.contains("short") && value == "0" => temp.short_ma = "NaN".to_string(),
+                            name if name.contains("long") && value == "0" => temp.long_ma = "NaN".to_string(),
+                            name if name.contains("short") && value != "0" => temp.short_ma = value,
+                            name if name.contains("long") && value != "0" => temp.long_ma = value,
                             _ => debug!("No matching column name")
                         }
 

@@ -104,19 +104,27 @@ impl CrossingAvg {
                 // Implementation of calculating signal for moving average strategy
                 if ma_type == "SMA" {
                     self.sma_options.window_size = window_size;
+                    self.sma_options.min_periods = window_size;
                     self.df = df.clone()
                         .lazy()
                         .with_column(
-                            col("close").rolling_mean(self.sma_options.clone()).alias(ma_name.clone()),
+                            col("close").rolling_mean(self.sma_options.clone())
+                                        .alias(ma_name.clone())
+                                        // Shift the calculated moving average to the corresponding datetime
+                                        .shift((-(window_size as i32)).into()),
                         )
                         .collect().ok();
                 } else if ma_type == "EWMA" {
                     self.ewma_options.alpha = 2.0 / (window_size + 1) as f64;
+                    self.ewma_options.min_periods = window_size;
                     self.df = df.clone()
                         .lazy()
                         .with_column(
-                        col("close").ewm_mean(self.ewma_options.clone()).fill_null(0).alias(ma_name.clone()),
-                    ).collect().ok();
+                            col("close").ewm_mean(self.ewma_options.clone())
+                                        .alias(ma_name.clone())
+                                        .shift((-(window_size as i32)).into()),
+                        )
+                        .collect().ok();
                 }
                 info!("Calculated {}", ma_name);
                 return Ok(());
@@ -154,13 +162,13 @@ impl CrossingAvg {
                     .with_columns([
                         when(
                             col(&short_ma_name).gt(col(&long_ma_name)).and(
-                                col(&short_ma_name).shift(lit(1)).lt_eq(col(&long_ma_name))
+                                col(&short_ma_name).shift(lit(1)).lt(col(&long_ma_name))
                             )
                         )
                         .then(lit(-1))
                         .when(
                             col(&short_ma_name).lt(col(&long_ma_name)).and(
-                                col(&short_ma_name).shift(lit(1)).gt_eq(col(&long_ma_name))
+                                col(&short_ma_name).shift(lit(1)).gt(col(&long_ma_name))
                             )
                         )
                         .then(lit(1))
