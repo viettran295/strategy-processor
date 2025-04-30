@@ -51,7 +51,7 @@ impl RSI {
     ) -> Self {
         let sma_options = RollingOptionsFixedWindow {
             window_size: period,
-            min_periods: 1,
+            min_periods: period,
             weights: None,
             center: false,
             fn_params: None,
@@ -74,7 +74,9 @@ impl RSI {
                     let mut updated_df = df.clone()
                         .lazy()
                         .with_column(
-                            (col("close") - col("close").shift(lit(1))).alias("delta")
+                            (col("close").shift(lit(1)) - col("close"))
+                                .alias("delta")
+                                .shift(lit(-1))
                         )
                         .collect()?;
 
@@ -95,8 +97,12 @@ impl RSI {
                     updated_df = updated_df.clone()
                         .lazy()
                         .with_columns([
-                            col("gain").rolling_mean(self.sma_options.clone()).alias(&avg_gain),
-                            col("loss").rolling_mean(self.sma_options.clone()).alias(&avg_loss),
+                            col("gain").rolling_mean(self.sma_options.clone())
+                                        .shift(lit(-(self.sma_options.window_size as i32)))
+                                        .alias(&avg_gain),
+                            col("loss").rolling_mean(self.sma_options.clone())
+                                        .shift(lit(-(self.sma_options.window_size as i32)))
+                                        .alias(&avg_loss)
                         ])
                         .collect()?;
 
