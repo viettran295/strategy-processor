@@ -14,6 +14,7 @@ async fn main() -> std::io::Result<()> {
             .route("/{symbol}", web::get().to(get_price))
             .route("/sma/{symbol}", web::get().to(get_sma_signal))
             .route("/ewma/{symbol}", web::get().to(get_ewma_signal))
+            .route("/rsi/{symbol}", web::get().to(get_rsi_signal))
     })
     .bind("0.0.0.0:8000")?
     .run()
