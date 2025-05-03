@@ -3,7 +3,8 @@ use log::error;
 use serde::Deserialize;
 
 use crate::fetch::StockFetcher;
-use crate::processor::{CrossingAvg, DfProcessor, RSI};
+use crate::processor::{CrossingAvg, RSI};
+use crate::converter::DfConverter;
 
 #[derive(Deserialize)]
 pub struct DateParams {
@@ -47,7 +48,7 @@ async fn fetch_and_process<F>(
     process_fn: F
 ) -> HttpResponse 
 where 
-    F: FnOnce(DfProcessor, &Query<QueryParams>) -> Result<String, Box<dyn std::error::Error>>,
+    F: FnOnce(DfConverter, &Query<QueryParams>) -> Result<String, Box<dyn std::error::Error>>,
 {
     let fetcher = StockFetcher::new();
     let start_date = query.start_date.clone();
@@ -55,7 +56,7 @@ where
 
     match fetcher.fetch_prices(symbol.to_string(), start_date, end_date).await {
         Ok(stock_data) => {
-            let mut df_proc = DfProcessor::new();
+            let mut df_proc = DfConverter::new();
             match df_proc.to_df(stock_data) {
                 Ok(_) => {
                     match process_fn(df_proc, query) {
@@ -96,7 +97,7 @@ pub async fn get_ma_signal(
         let mut crs_avg = CrossingAvg::new(df_proc.df.unwrap(), ma_type);
         match crs_avg.calc_signal(short_ma, long_ma, ma_type) {
             Ok(_) => {
-                let response = DfProcessor::df_to_json(&crs_avg.df.clone().unwrap());
+                let response = DfConverter::crossingma_df_to_json(&crs_avg.df.clone().unwrap());
                 Ok(response)
             }
             Err(e) => {
@@ -133,7 +134,7 @@ pub async fn get_rsi_signal(
         match rsi_str.calc_rsi() {
             Ok(_) => {
                 rsi_str.calc_signal()?;
-                let response = DfProcessor::RSI_df_to_json(&rsi_str.df.clone().unwrap());
+                let response = DfConverter::rsi_df_to_json(&rsi_str.df.clone().unwrap());
                 return Ok(response);
             }
             Err(e) => {

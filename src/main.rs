@@ -2,6 +2,7 @@ mod config;
 mod fetch;
 mod processor;
 mod handler;
+mod converter;
 
 use actix_web::{web, App, HttpServer};
 use handler::*;
