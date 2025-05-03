@@ -1,5 +1,8 @@
 use crate::fetch::TwelveDataResponse;
-use crate::processor::{CrossingMAResponse, CrossingMAData, DfColumns};
+use crate::processor::{CrossingMAResponse, CrossingMAData, 
+                        DfColumns, RSIData, RSIResponse};
+
+use std::fmt::Debug;
 
 use log::{debug, error, info};
 use polars::prelude::*;
@@ -66,9 +69,8 @@ impl DfProcessor {
         }
     }
 
-    pub fn df_to_json(df: &DataFrame) -> String {
+    fn get_cols_info(df: &DataFrame) -> DfColumns {
         let mut cols_response = DfColumns::new();
-        let mut data_response: Vec<CrossingMAData> = Vec::new();
         let column_names = df.get_columns()
                             .iter()
                             .map(|col| col.name().to_string())
@@ -79,6 +81,12 @@ impl DfProcessor {
                             .collect();
         cols_response.column_names = column_names;
         cols_response.column_types = column_types;
+        return cols_response;
+    }
+    
+    pub fn df_to_json(df: &DataFrame) -> String {
+        let cols_response = Self::get_cols_info(&df);
+        let mut data_response: Vec<CrossingMAData> = Vec::new();
         for row in 0..df.height() {
             let mut temp = CrossingMAData::new();
             for col in df.get_columns() {
@@ -102,7 +110,6 @@ impl DfProcessor {
                             name if name.contains("long") && value != "0" => temp.long_ma = value,
                             _ => debug!("No matching column name")
                         }
-
                     }
                     DataType::Int32 => {
                         let value = df.column(col.name())
@@ -130,6 +137,60 @@ impl DfProcessor {
             data_response.push(temp);
         }
         let response = CrossingMAResponse::new(cols_response, data_response);
+        return serde_json::to_string(&response).unwrap();
+    }
+    
+    pub fn RSI_df_to_json(df: &DataFrame) -> String {
+        let cols_response = Self::get_cols_info(&df);
+        let mut data_response: Vec<RSIData> = Vec::new();
+        for row in 0..df.height() {
+            let mut temp = RSIData::new();
+            for col in df.get_columns() {
+                match col.dtype() {
+                    DataType::Float32 => {
+                        let value = df.column(col.name())
+                                        .unwrap()
+                                        .f32()
+                                        .unwrap()
+                                        .get(row)
+                                        .unwrap_or(0.0)
+                                        .to_string();
+                        match col.name().as_str() {
+                            "high" => temp.base_data.high = value,
+                            "low" => temp.base_data.low = value,
+                            "open" => temp.base_data.open = value,
+                            "close" => temp.base_data.close = value,
+                            name if name.contains("RSI") && value == "0" => temp.rsi = "NaN".to_string(),
+                            name if name.contains("RSI") && value != "0" => temp.rsi = value,
+                            _ => debug!("No matching column name")
+                        }
+                    }
+                    DataType::Int32 => {
+                        let value = df.column(col.name())
+                                                .unwrap()
+                                                .i32()
+                                                .unwrap()
+                                                .get(row)
+                                                .unwrap()
+                                                .to_string();
+                        temp.signal = value
+                    }
+                    DataType::String => {
+                        let value = df.column(col.name())
+                                                .unwrap()
+                                                .str()
+                                                .unwrap()
+                                                .get(row)
+                                                .unwrap()
+                                                .to_string();
+                        temp.base_data.datetime = value
+                    }
+                    _ => continue
+                }
+            }
+            data_response.push(temp);
+        }
+        let response = RSIResponse::new(cols_response, data_response);
         return serde_json::to_string(&response).unwrap();
     }
 }
