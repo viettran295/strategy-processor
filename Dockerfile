@@ -1,5 +1,5 @@
-FROM rust:1.85-slim-bookworm AS builder
-
+FROM rust:1.85-slim-bookworm AS chef
+WORKDIR /app
 # Install OpenSSL and musl libc for alpine
 RUN USER=root \
     apt-get update && \
@@ -7,13 +7,20 @@ RUN USER=root \
     musl-tools \
     make \
     perl
-
-WORKDIR /app
-COPY Cargo.toml Cargo.lock .env ./
-COPY src ./src/
-
 RUN rustup target add x86_64-unknown-linux-musl
-RUN cargo fetch
+RUN cargo install cargo-chef
+
+# ------------------
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+# ------------------
+FROM chef AS builder
+COPY --from=planner /app/recipe.json .
+# Build and cache dependencies
+RUN cargo chef cook --release --target x86_64-unknown-linux-musl --recipe-path recipe.json
+COPY . .
 RUN cargo build --release --target x86_64-unknown-linux-musl --verbose
 
 # ----------------
