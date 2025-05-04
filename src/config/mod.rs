@@ -1,5 +1,6 @@
 use std::env;
 use dotenv::dotenv;
+use log::error;
 
 pub struct TwelDataCfg {
     pub api_key: String,
@@ -9,7 +10,10 @@ pub struct TwelDataCfg {
 }
 impl TwelDataCfg {
     pub fn new() -> Self {
-        dotenv().expect("Fail to load .env");
+        match dotenv() {
+            Ok(_) => (),
+            Err(_) => error!("Fail to load .env"),
+        };
         return Self { 
             api_key: env::var("TWEL_DATA_KEY").expect("API key for 12 Data is not set"), 
             url: String::from("https://api.twelvedata.com/time_series?"),

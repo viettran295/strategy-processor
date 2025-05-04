@@ -28,6 +28,7 @@ FROM alpine:3.21
 RUN apk add --no-cache openssl
 WORKDIR /app
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/str-proc ./
-COPY .env ./
+ARG TWEL_DATA_KEY
+ENV TWEL_DATA_KEY=$TWEL_DATA_KEY
 EXPOSE 8000
 CMD ["./str-proc"]
