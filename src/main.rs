@@ -3,6 +3,7 @@ mod fetch;
 mod processor;
 mod handler;
 mod converter;
+mod scanner;
 
 use actix_web::{web, App, HttpServer};
 use handler::*;
