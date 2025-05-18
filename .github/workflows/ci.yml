@@ -31,5 +31,4 @@ jobs:
         file: ./Dockerfile
         push: true
         tags: ${{ secrets.DOCKER_USERNAME }}/str-proc:latest
-      env:
-        TWEL_DATA_KEY: ${{ secrets.TWEL_DATA_KEY }}
+        build-args: TWEL_DATA_KEY=${{ secrets.TWEL_DATA_KEY }}
