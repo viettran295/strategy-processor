@@ -27,8 +27,13 @@ impl Backtest {
             let mut cum_sum = 0.0;
             let mut trades = 0;
             let mut last_exec_price = 0.0;
+            let mut first_trade: bool = true;
             for i in (0..df_bt.height()).rev() {
                 if let Some(exec_price) = self.get_exec_price(df_bt.column("Backtest").unwrap().get(i).unwrap()) {
+                    if exec_price > 0.0 && first_trade {
+                        first_trade = false;
+                        continue;
+                    }
                     if exec_price != 0.0 {
                         cum_sum += exec_price;
                         trades += 1;
