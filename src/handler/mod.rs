@@ -2,8 +2,8 @@ use actix_web::{web::{self, Query}, HttpResponse};
 use log::error;
 use serde::Deserialize;
 
-use crate::fetch::StockFetcher;
-use crate::processor::{CrossingAvg, RSI};
+use crate::{scanner::Backtest, fetch::StockFetcher};
+use crate::processor::{Strategy, StrategyCrossingMA, StrategyRSI};
 use crate::converter::DfConverter;
 
 #[derive(Deserialize)]
@@ -86,6 +86,7 @@ where
         }
     }
 }
+
 pub async fn get_ma_signal(
     symbol: web::Path<String>,
     ma_type: &str,
@@ -94,9 +95,18 @@ pub async fn get_ma_signal(
     fetch_and_process(symbol, &query, |df_proc, query| {
         let short_ma = query.short_ma.clone().unwrap_or(20);
         let long_ma = query.long_ma.clone().unwrap_or(50);
-        let mut crs_avg = CrossingAvg::new(df_proc.df.unwrap(), ma_type);
-        match crs_avg.calc_signal(short_ma, long_ma, ma_type) {
+        let mut crs_avg = StrategyCrossingMA::new(
+                                    df_proc.df.unwrap(), 
+                                    short_ma, 
+                                    long_ma, 
+                                    ma_type.to_string()
+                            );
+        match crs_avg.calc_signal() {
             Ok(_) => {
+                let mut bt = Backtest::new();
+                if let Some(ref df) = crs_avg.df {
+                    bt.execute(df, "Sig_SMA_20_50"); 
+                }
                 let response = DfConverter::crossingma_df_to_json(&crs_avg.df.clone().unwrap());
                 Ok(response)
             }
@@ -130,7 +140,7 @@ pub async fn get_rsi_signal(
     query: Query<QueryParams>
     ) -> HttpResponse {
     fetch_and_process(symbol, &query, |df_proc, _| {
-        let mut rsi_str = RSI::new(df_proc.df.unwrap(), 14, 80, 20);
+        let mut rsi_str = StrategyRSI::new(df_proc.df.unwrap(), 14, 80, 20);
         match rsi_str.calc_rsi() {
             Ok(_) => {
                 rsi_str.calc_signal()?;

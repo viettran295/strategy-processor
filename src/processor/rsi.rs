@@ -3,6 +3,8 @@ use log::{info, debug};
 use serde::{Deserialize, Serialize};
 use crate::processor::base::{DfBaseData, DfColumns};
 
+use super::Strategy;
+
 #[derive(Deserialize, Serialize, Debug)]
 pub struct RSIData {
     #[serde(flatten)]
@@ -18,7 +20,7 @@ pub struct RSIResponse {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct RSI {
+pub struct StrategyRSI {
     pub df: Option<DataFrame>,
     pub upper_bound: usize,
     pub lower_bound: usize,
@@ -42,7 +44,7 @@ impl RSIResponse {
     }
 }
 
-impl RSI {
+impl StrategyRSI {
     pub fn new(
         df: DataFrame, 
         period: usize,
@@ -56,13 +58,20 @@ impl RSI {
             center: false,
             fn_params: None,
         };
-        RSI {
+        StrategyRSI {
             df: Some(df),
             sma_options,
             upper_bound,
             lower_bound
         }
     }
+    
+    pub fn update_params(&mut self, period: usize, upper_bound: usize, lower_bound: usize) {
+        self.sma_options.window_size = period;
+        self.upper_bound = upper_bound;
+        self.lower_bound = lower_bound;
+    }
+    
     pub fn calc_rsi(&mut self) -> Result<(), Box<dyn std::error::Error>> {
             match &mut self.df {
                 Some(df) => {
@@ -129,7 +138,10 @@ impl RSI {
                 }
             }
         }
-    pub fn calc_signal(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+}
+
+impl Strategy for StrategyRSI{
+    fn calc_signal(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         match &mut self.df {
             Some(df) => {
                 let columns = df.get_column_names();
