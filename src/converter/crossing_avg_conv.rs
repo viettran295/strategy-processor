@@ -19,7 +19,7 @@ impl CrossingMAConverter {
                                                                     .get(row)
                                                                     .unwrap()
                                                                     .to_string(),
-                    name if name.contains("short") => {
+                    name if name.contains("SMA") || name.contains("EWMA")=> {
                         let value = df.column(col.name())
                                         .unwrap()
                                         .f32()
@@ -28,23 +28,9 @@ impl CrossingMAConverter {
                                         .unwrap_or(0.0)
                                         .to_string();
                         if value != "0" {
-                            temp.short_ma = value;
+                            temp.ma_windows.push(value);
                         } else {
-                            temp.short_ma = "NaN".to_string();
-                        }
-                    }
-                    name if name.contains("long") => {
-                        let value = df.column(col.name())
-                                        .unwrap()
-                                        .f32()
-                                        .unwrap()
-                                        .get(row)
-                                        .unwrap_or(0.0)
-                                        .to_string();
-                        if value != "0" {
-                            temp.long_ma = value;
-                        } else {
-                            temp.long_ma= "NaN".to_string();
+                            temp.ma_windows.push("NaN".to_string());
                         }
                     }
                     _ => continue

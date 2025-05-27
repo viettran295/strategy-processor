@@ -19,8 +19,7 @@ pub struct StrategyCrossingMA {
 pub struct CrossingMAData {
     #[serde(flatten)]
     pub base_data: DfBaseData,
-    pub short_ma: String,
-    pub long_ma: String,
+    pub ma_windows: Vec<String>,
     pub signal: String
 }
 
@@ -35,8 +34,7 @@ impl CrossingMAData {
         let base_data = DfBaseData::new();
         CrossingMAData { 
             base_data,
-            short_ma: String::new(),
-            long_ma: String::new(),
+            ma_windows: Vec::new(),
             signal: String::new()
         }
     }
@@ -126,8 +124,8 @@ impl Strategy for StrategyCrossingMA {
         }
 
         let signal_name = format!("Sig_{}_{}_{}", self.ma_type, self.short_ma, self.long_ma);
-        let short_ma_name = format!("{}_short_{}", self.ma_type, self.short_ma);
-        let long_ma_name = format!("{}_long_{}", self.ma_type, self.long_ma);
+        let short_ma_name = format!("{}_{}", self.ma_type, self.short_ma);
+        let long_ma_name = format!("{}_{}", self.ma_type, self.long_ma);
         let shift_days = 1;
 
         // Calculate MAs up front
