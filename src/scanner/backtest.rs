@@ -48,7 +48,6 @@ impl Backtest {
                 cum_sum -= last_exec_price;
             }
             self.results.insert(sig_col.to_string(), cum_sum);
-            debug!("Backtest result: {:?}", self.results);
         }
     }
     fn get_exec_price(&self, av: AnyValue) -> Option<f32> {
