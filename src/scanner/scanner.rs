@@ -1,4 +1,6 @@
-use log::debug;
+use log::{debug, error};
+use polars::prelude::*;
+use regex::Regex;
 
 use crate::processor::Strategy;
 use crate::processor::{StrategyCrossingMA, StrategyRSI};
@@ -8,6 +10,7 @@ use super::Backtest;
 pub trait ScannerPerformance {
     fn scan_performance(&mut self) -> Result<(), Box<dyn std::error::Error>>;
     fn best_performance(&mut self) -> Option<(&String, &f32)>;
+    fn get_best_performance_df(&mut self) -> Option<DataFrame>;
 }
 
 pub struct ScannerCrossingMA{
@@ -48,13 +51,42 @@ impl ScannerPerformance for ScannerCrossingMA {
     }
     
     fn best_performance(&mut self) -> Option<(&String, &f32)> {
-        let mut res: Option<(&String, &f32)> = None;
-        if !self.backtest.results.is_empty() {
-            res = self.backtest.results.iter()
-                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap());
-        } else {
-            debug!("No backtest results found");
-        }
+        if self.backtest.results.is_empty() {
+            match self.scan_performance() {
+                Ok(_) => {}
+                Err(e) => {
+                    error!("Error scanning best performance: {}", e);
+                    return None;
+                }
+            }
+        } 
+        let res = self.backtest.results.iter()
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap());
         return res;
+    }
+    
+    fn get_best_performance_df(&mut self) -> Option<DataFrame> {
+        let best_perf = self.best_performance()?;
+        let best_perf_col = best_perf.0.clone();
+        let re = Regex::new(r"_(\d+)_(\d+)").expect("Failed to extract long short MA");
+        
+        if let Some(captures) = re.captures(best_perf_col.as_str()) {
+            let short_win = captures.get(1).unwrap().as_str();
+            let short_ma = format!("{}_{}", self.strategy.ma_type, short_win);
+            let long_win = captures.get(2).unwrap().as_str();
+            let long_ma = format!("{}_{}", self.strategy.ma_type, long_win);
+            
+            let df = self.strategy.df.as_ref()?;
+            let cols = vec!["datetime".to_string(), "high".to_string(), "low".to_string(),
+                            "open".to_string(), "close".to_string(), 
+                            short_ma.to_string(), long_ma.to_string(), best_perf_col];
+            match df.select(cols) {
+                Ok(df) => Some(df),
+                Err(_) => None,
+            }
+        } else {
+            debug!("Error getting best performance df");
+            return None;
+        }
     }
 }

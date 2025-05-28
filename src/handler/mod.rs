@@ -197,13 +197,9 @@ async fn get_best_performance_ma(
                                     ma_type_owned
                             );
             let mut scanner = ScannerCrossingMA::new(crs_avg.clone(), from_ma, to_ma);
-            scanner.scan_performance()?;
-            match scanner.best_performance() {
-                Some((strategy, value)) => {
-                    let response = serde_json::json!({
-                        "strategy": strategy,
-                        "value": value
-                    }).to_string();
+            match scanner.get_best_performance_df() {
+                Some(df) => {
+                    let response = DfConverter::crossingma_df_to_json(&df);
                     Ok(response)
                 },
                 None => Err(Box::new(std::io::Error::new(

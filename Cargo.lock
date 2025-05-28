@@ -3012,6 +3012,7 @@ dependencies = [
  "log",
  "openssl",
  "polars",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",
