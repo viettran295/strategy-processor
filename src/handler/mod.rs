@@ -2,7 +2,7 @@ use actix_web::{web::{self, Query}, HttpResponse};
 use log::error;
 use serde::Deserialize;
 
-use crate::{fetch::StockFetcher, scanner::{ScannerPerformance, ScannerCrossingMA}};
+use crate::{fetch::StockFetcher, scanner::{ScannerCrossingMA, ScannerPerformance, ScannerRSI}};
 use crate::processor::{Strategy, StrategyCrossingMA, StrategyRSI};
 use crate::converter::DfConverter;
 
@@ -64,7 +64,10 @@ pub async fn get_rsi_signal(
         symbol, 
         &query, 
         |df_proc, _| {
-            let mut rsi_str = StrategyRSI::new(df_proc.df.unwrap(), 14, 80, 20);
+            let ma_window = 14;
+            let upper_bound = 80;
+            let lower_bound = 20;
+            let mut rsi_str = StrategyRSI::new(df_proc.df.unwrap(), ma_window, upper_bound, lower_bound);
             match rsi_str.calc_rsi() {
                 Ok(_) => {
                     rsi_str.calc_signal()?;
@@ -95,6 +98,35 @@ pub async fn get_best_performance_ewma(
     query:Query<QueryParams>
     ) -> HttpResponse {
     get_best_performance_ma(symbol, query, "EWMA").await
+}
+
+pub async fn get_best_performance_rsi(
+    symbol: web::Path<String>, 
+    query: Query<QueryParams>,
+) -> HttpResponse {
+    fetch_and_process(
+        symbol, 
+        &query,
+        |df_proc, _| {
+            let from_ma = 5;
+            let to_ma = 20;
+            let ma_window = 5;
+            let upper_bound = 80;
+            let lower_bound = 20;
+            let rsi_str = StrategyRSI::new(df_proc.df.unwrap(), ma_window, upper_bound, lower_bound);
+            let mut scanner = ScannerRSI::new(rsi_str.clone(), from_ma, to_ma);
+            match scanner.get_best_performance_df() {
+                Some(df) => {
+                    let response = DfConverter::rsi_df_to_json(&df);
+                    Ok(response)
+                },
+                None => Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "No RSI best performance found"
+                )))
+            }
+        }
+    ).await
 }
 
 async fn fetch_and_process<F>(
@@ -204,7 +236,7 @@ async fn get_best_performance_ma(
                 },
                 None => Err(Box::new(std::io::Error::new(
                     std::io::ErrorKind::Other,
-                    "No best performance found"
+                    "No crossing MA best performance found"
                 )))
             }
         }
