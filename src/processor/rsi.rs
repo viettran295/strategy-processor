@@ -19,7 +19,7 @@ pub struct RSIResponse {
     pub data: Vec<RSIData>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct StrategyRSI {
     pub df: Option<DataFrame>,
     pub upper_bound: usize,
@@ -53,7 +53,7 @@ impl StrategyRSI {
     ) -> Self {
         let sma_options = RollingOptionsFixedWindow {
             window_size: period,
-            min_periods: period,
+            min_periods: 1,
             weights: None,
             center: false,
             fn_params: None,
@@ -79,6 +79,9 @@ impl StrategyRSI {
                     let avg_loss = format!("avg_loss_{}", self.sma_options.window_size);
                     let rs = format!("RS_{}", self.sma_options.window_size);
                     let rsi = format!("RSI_{}", self.sma_options.window_size);
+                    let delta = "delta";
+                    let gain = "gain";
+                    let loss = "loss";
 
                     let mut updated_df = df.clone()
                         .lazy()
@@ -92,24 +95,24 @@ impl StrategyRSI {
                     updated_df = updated_df.clone()
                         .lazy()
                         .with_columns([
-                            when(col("delta").gt(lit(0.0)))
-                                .then(col("delta"))
+                            when(col(delta).gt(lit(0.0)))
+                                .then(col(delta))
                                 .otherwise(lit(0.0))
-                                .alias("gain"),
-                            when(col("delta").lt(lit(0.0)))
-                                .then(-col("delta"))
+                                .alias(gain),
+                            when(col(delta).lt(lit(0.0)))
+                                .then(-col(delta))
                                 .otherwise(lit(0.0))
-                                .alias("loss"),
+                                .alias(loss),
                         ])
                         .collect()?;
 
                     updated_df = updated_df.clone()
                         .lazy()
                         .with_columns([
-                            col("gain").rolling_mean(self.sma_options.clone())
+                            col(gain).rolling_mean(self.sma_options.clone())
                                         .shift(lit(-(self.sma_options.window_size as i32)))
                                         .alias(&avg_gain),
-                            col("loss").rolling_mean(self.sma_options.clone())
+                            col(loss).rolling_mean(self.sma_options.clone())
                                         .shift(lit(-(self.sma_options.window_size as i32)))
                                         .alias(&avg_loss)
                         ])
@@ -128,8 +131,13 @@ impl StrategyRSI {
                             (lit(100.0) - (lit(100.0) / (lit(1.0) + col(&rs)))).alias(&rsi)
                         )
                         .collect()?;
+                    
+                    updated_df = updated_df.drop_many(
+                                    vec![delta.to_string(), gain.to_string(), 
+                                                loss.to_string(), avg_gain, avg_loss, rs]
+                                );
                     self.df = Some(updated_df);
-                    info!("Calculated RSI");
+                    info!("Calculated {}", rsi);
                     return Ok(());
                 }
                 None => {
@@ -145,17 +153,18 @@ impl Strategy for StrategyRSI{
         match &mut self.df {
             Some(df) => {
                 let columns = df.get_column_names();
+                let rsi_col_name = format!("RSI_{}", self.sma_options.window_size);
                 let rsi_col = columns.iter()
-                    .find(|name| name.contains("RSI"))
+                    .find(|name| name.contains(&rsi_col_name))
                     .ok_or("RSI column not found")?;
                 let signal_name = format!("Sig_{}", self.sma_options.window_size);
                 self.df = df.clone()
                     .lazy()
                     .with_column(
                         when(col(rsi_col.to_string()).gt(lit(self.upper_bound as u32)))
-                            .then(-1)
-                            .when(col(rsi_col.to_string()).lt(lit(self.lower_bound as u32)))
                             .then(1)
+                            .when(col(rsi_col.to_string()).lt(lit(self.lower_bound as u32)))
+                            .then(-1)
                             .otherwise(0)
                             .alias(signal_name)
                     )
