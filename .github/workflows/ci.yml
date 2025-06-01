@@ -13,6 +13,14 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/arm64
+            arch: aarch64-unknown-linux-musl
+          - platform: linux/amd64
+            arch: x86_64-unknown-linux-musl
 
     steps:
     - name: Checkout code
@@ -23,12 +31,15 @@ jobs:
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-    
+        
     - name: Build and push
       uses: docker/build-push-action@v5
       with:
         context: .
+        platform: ${{ matrix.platform }}
         file: ./Dockerfile
         push: true
-        tags: ${{ secrets.DOCKER_USERNAME }}/str-proc:latest
-        build-args: TWEL_DATA_KEY=${{ secrets.TWEL_DATA_KEY }}
+        tags: ${{ secrets.DOCKER_USERNAME }}/str-proc:${{ matrix.arch }}
+        build-args: |
+          ARCH=${{ matrix.arch }}
+          TWEL_DATA_KEY=${{ secrets.TWEL_DATA_KEY }}
