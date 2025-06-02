@@ -10,18 +10,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: linux/arm64
-            arch: aarch64-unknown-linux-musl
-          - platform: linux/amd64
-            arch: x86_64-unknown-linux-musl
-
+  build-arm64:
+    runs-on: ubuntu-24.04-arm
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -36,10 +26,33 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        platform: ${{ matrix.platform }}
+        file: ./Dockerfile
+        platform: linux/arm64/v8
+        push: true
+        tags: ${{ secrets.DOCKER_USERNAME }}/str-proc:arm64-latest
+        build-args: |
+          ARCH=aarch64-unknown-linux-musl
+          TWEL_DATA_KEY=${{ secrets.TWEL_DATA_KEY }}
+
+  build-amd64:
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        
+    - name: Build and push
+      uses: docker/build-push-action@v5
+      with:
+        context: .
         file: ./Dockerfile
         push: true
-        tags: ${{ secrets.DOCKER_USERNAME }}/str-proc:${{ matrix.arch }}
+        tags: ${{ secrets.DOCKER_USERNAME }}/str-proc:x86_64-latest
         build-args: |
-          ARCH=${{ matrix.arch }}
+          ARCH=x86_64-unknown-linux-musl
           TWEL_DATA_KEY=${{ secrets.TWEL_DATA_KEY }}
