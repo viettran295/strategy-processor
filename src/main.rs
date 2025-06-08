@@ -4,6 +4,7 @@ mod processor;
 mod handler;
 mod converter;
 mod scanner;
+mod db;
 
 use actix_web::{web, App, HttpServer};
 use handler::*;
