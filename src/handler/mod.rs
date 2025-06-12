@@ -5,6 +5,7 @@ use serde::Deserialize;
 use crate::{fetch::StockFetcher, scanner::{ScannerCrossingMA, ScannerPerformance, ScannerRSI}};
 use crate::processor::{Strategy, StrategyCrossingMA, StrategyRSI};
 use crate::converter::DfConverter;
+use crate::db::DbManager;
 
 #[derive(Deserialize)]
 pub struct DateParams {
@@ -61,7 +62,7 @@ pub async fn get_rsi_signal(
     query: Query<QueryParams>
     ) -> HttpResponse {
     fetch_and_process(
-        symbol, 
+        symbol.clone(), 
         &query, 
         |df_proc, _| {
             let ma_window = 14;
@@ -105,7 +106,7 @@ pub async fn get_best_performance_rsi(
     query: Query<QueryParams>,
 ) -> HttpResponse {
     fetch_and_process(
-        symbol, 
+        symbol.clone(), 
         &query,
         |df_proc, _| {
             let from_ma = 5;
@@ -130,45 +131,42 @@ pub async fn get_best_performance_rsi(
 }
 
 async fn fetch_and_process<F>(
-    symbol: web::Path<String>,
+    symbol: String,
     query: &Query<QueryParams>,
     process_fn: F
 ) -> HttpResponse
 where F: FnOnce(DfConverter, &Query<QueryParams>) -> Result<String, Box<dyn std::error::Error>> 
 {
-    let fetcher = StockFetcher::new();
-    let start_date = query.start_date.clone();
-    let end_date = query.end_date.clone();
+    let mut df_cvt = DfConverter::new();
+    let db = DbManager::default();
 
-    match fetcher.fetch_prices(symbol.to_string(), start_date, end_date).await {
-        Ok(stock_data) => {
-            let mut df_proc = DfConverter::new();
-            match df_proc.to_df(stock_data) {
-                Ok(_) => {
-                    match process_fn(df_proc, query) {
-                        Ok(response) => {
-                            return HttpResponse::Ok()
-                                .content_type("application/json")
-                                .body(response);
-                        },
-                        Err(e) => {
-                            error!("Error calculating signal: {}", e);
-                            return HttpResponse::InternalServerError()
-                                .body(format!("Error calculating signal: {}", e))
-                        }
-                    }
-                },
-                Err(e) => {
-                    error!("Error processing data: {}", e);
-                    return HttpResponse::InternalServerError()
-                        .body(format!("Error processing data: {}", e))
-                }
-            }
-        }
+    let df = if db.table_exists(symbol.to_string()).unwrap_or(false){
+        df_cvt.df = Some(db.get_table(symbol.to_string()).unwrap());
+        df_cvt
+    } else {
+        let fetcher = StockFetcher::new();
+        let start_date = query.start_date.clone();
+        let end_date = query.end_date.clone();
+        fetcher.fetch_prices(symbol.to_string(), start_date, end_date)
+            .await
+            .and_then(|stock_data| {
+                df_cvt.to_df(stock_data)?;
+                db.create_table(symbol.to_string(), &mut df_cvt.df.clone().unwrap())
+                    .expect(format!("Error creating {} db table", symbol).as_str());
+                Ok(df_cvt)
+            }).expect("Error fetching stock price")
+    };
+
+    match process_fn(df, query) {
+        Ok(response) => {
+            return HttpResponse::Ok()
+                .content_type("application/json")
+                .body(response);
+        },
         Err(e) => {
-            error!("Error getting moving average stock prices: {}", e);
+            error!("Error calculating signal: {}", e);
             return HttpResponse::InternalServerError()
-                .body(format!("Error getting moving average stock prices: {}", e))
+                .body(format!("Error calculating signal: {}", e))
         }
     }
 }
@@ -180,7 +178,7 @@ async fn get_ma_signal(
 ) -> HttpResponse {
     let ma_type_owned = ma_type.to_string();
     fetch_and_process(
-        symbol, 
+        symbol.clone(), 
         &query, 
         |df_proc, query| {
             let short_ma = query.short_ma.clone().unwrap_or(20);
@@ -215,7 +213,7 @@ async fn get_best_performance_ma(
 ) -> HttpResponse {
     let ma_type_owned = ma_type.to_string();
     fetch_and_process(
-        symbol, 
+        symbol.clone(), 
         &query,
         |df_proc, query| {
             let from_ma = 10;

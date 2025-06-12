@@ -1,6 +1,8 @@
-use polars::prelude::*;
+use indexmap::IndexMap;
+use polars::{frame::{row::AnyValueBuffer}, prelude::*};
 use duckdb::{Connection, Result};
 use std::{fs, path::Path};
+use log::error;
 
 #[derive(Debug)]
 pub struct DbManager {
@@ -14,7 +16,8 @@ impl Default for DbManager {
         let db_path = format!("{}/stocks.db", base_path);
         let data_dir = Path::new(base_path);
         if !data_dir.is_dir() {
-            fs::create_dir_all(data_dir).expect("Error creating data dir");
+            fs::create_dir_all(data_dir)
+                .map_err(|e| error!("Error creating data dir: {}", e));
         }
         DbManager {
             data_dir: data_dir.to_str().unwrap().to_string(),
@@ -49,6 +52,51 @@ impl DbManager {
         Ok(())
     }
     
+    pub fn table_exists(&self, table_name: String) -> Result<bool> {
+        let conn = Connection::open(self.db_path.as_str())?;
+        let query = format!(
+            "SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables
+                WHERE table_name = '{}'
+            ) AS table_exists",
+            table_name
+        );
+        let mut stmt = conn.prepare(&query)?;
+        let table_exists = stmt.query_row([], |row| row.get(0))?;
+        Ok(table_exists)
+    }
+    
+    pub fn get_table(&self, table_name: String) -> Result<DataFrame> {
+        let conn = Connection::open(self.db_path.clone())?;
+        let query = format!("SELECT * FROM {}", table_name);
+        let mut stmt = conn.prepare(&query)?;
+        let mut rows = stmt.query([])?;
+
+        let mut series_vec: Vec<Series> = Vec::new();
+        let column_names_types = self.get_cols_names_types(table_name.clone())?;
+        let mut buffer: Vec<AnyValueBuffer> = self.create_buffer(column_names_types.values().cloned().collect());
+        while let Some(row) = rows.next()? {
+            for (i, _) in column_names_types.iter().enumerate() {
+                let value: duckdb::types::Value = row.get(i)?;
+                let cvt_val = match value {
+                    duckdb::types::Value::Float(v) => AnyValue::Float32(v),
+                    duckdb::types::Value::Int(v) => AnyValue::Int32(v),
+                    duckdb::types::Value::Text(v) => AnyValue::StringOwned(v.into()),
+                    _ => AnyValue::Null
+                };
+                buffer[i].add(cvt_val);
+            }
+        }
+        for (i, name) in column_names_types.keys().enumerate() {
+            let series = buffer[i].clone().into_series().with_name(name.into());
+            series_vec.push(series);
+        }
+        let df = DataFrame::new(series_vec
+                                .into_iter()
+                                .map(|s| s.into()).collect::<Vec<Column>>()).unwrap();
+        Ok(df)
+    }
+
     pub fn clean_up(&self) -> Result<()> {
         let entries = fs::read_dir(self.data_dir.as_str()).unwrap();
         for entry in entries {
@@ -62,5 +110,38 @@ impl DbManager {
             }
         }
         Ok(())
+    }
+
+    fn get_cols_names_types(&self, table_name: String) -> Result<IndexMap<String, String>> {
+        let conn = Connection::open(self.db_path.clone())?;
+        let query_cols_names = format!("PRAGMA table_info({})", table_name);
+        let mut cols_name_stmt = conn.prepare(&query_cols_names)?;
+        let rows = cols_name_stmt.query_map([], |row| {
+            let mut map: Vec<String> = Vec::new();
+            map.push(row.get(1)?);
+            map.push(row.get(2)?);
+            Ok(map)
+        })?;
+        // Use IndexMap to preserve insertion order
+        let mut column_names: IndexMap<String, String> = IndexMap::new();
+        for row in rows {
+            let row = row?;
+            column_names.insert(row[0].clone(), row[1].clone());
+        }
+        Ok(column_names)
+    }
+
+    fn create_buffer(&self, buffer_types: Vec<String>) -> Vec<AnyValueBuffer> {
+        let mut buffer: Vec<AnyValueBuffer> = Vec::new();
+        for col_type in &buffer_types {
+            if col_type.contains("VARCHAR") {
+                buffer.push(AnyValueBuffer::new(&DataType::String, 0));
+            } else if col_type.contains("FLOAT") {
+                buffer.push(AnyValueBuffer::new(&DataType::Float32, 0));
+            } else if col_type.contains("INT") {
+                buffer.push(AnyValueBuffer::new(&DataType::Int32, 0));
+            }
+        } 
+        return buffer;
     }
 }
