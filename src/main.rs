@@ -5,12 +5,15 @@ mod handler;
 mod converter;
 mod scanner;
 mod db;
+mod jobs;
 
 use actix_web::{web, App, HttpServer};
 use handler::*;
+use jobs::*;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    tokio::spawn(remove_cache_db());
     env_logger::init();
     HttpServer::new(|| {
         App::new()

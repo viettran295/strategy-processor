@@ -4,7 +4,7 @@ use duckdb::{Connection, Result};
 use std::{fs, path::Path, sync::{Mutex, MutexGuard}};
 use log::{error, debug};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DbManager {
     data_dir: String,
     db_path: Arc<Mutex<String>>
@@ -109,7 +109,7 @@ impl DbManager {
     }
 
     pub fn clean_up(&self) -> Result<()> {
-        let db_guard = self.acquire_db().unwrap();
+        let _db_guard = self.acquire_db().unwrap();
         let entries = fs::read_dir(self.data_dir.as_str()).unwrap();
         for entry in entries {
             let path = entry.unwrap().path();
@@ -117,11 +117,11 @@ impl DbManager {
                 if let Some(extension) = path.extension() {
                     if extension == "parquet" || extension == "db" {
                         fs::remove_file(&path).expect("Error cleaning database");
+                        debug!("Removed {:?}", path);
                     }
                 }
             }
         }
-        debug!("All data is clean");
         Ok(())
     }
 
