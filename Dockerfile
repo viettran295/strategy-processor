@@ -7,9 +7,17 @@ RUN USER=root \
     apt-get install -y openssl \
     make \
     g++ \
-    perl
+    perl && \
+    cargo install cargo-chef && \
+    mkdir -p src
+
 ENV CXX_"$ARCH"="g++" CXX="g++" CC_"$ARCH"="gcc" CC="gcc"
+COPY Cargo.toml Cargo.lock ./
+COPY ./src/main.rs ./src
+RUN cargo chef prepare --recipe-path recipe.json
 COPY . .
+RUN cargo chef cook --release --target $ARCH --recipe-path recipe.json
+
 RUN rustup target add $ARCH
 RUN cargo build --release --target $ARCH --verbose
 
