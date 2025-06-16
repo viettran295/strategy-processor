@@ -31,7 +31,7 @@ jobs:
         push: true
         tags: ${{ secrets.DOCKER_USERNAME }}/str-proc:arm64-latest
         build-args: |
-          ARCH=aarch64-unknown-linux-musl
+          ARCH=aarch64-unknown-linux-gnu
           TWEL_DATA_KEY=${{ secrets.TWEL_DATA_KEY }}
 
   build-amd64:
@@ -54,5 +54,5 @@ jobs:
         push: true
         tags: ${{ secrets.DOCKER_USERNAME }}/str-proc:x86_64-latest
         build-args: |
-          ARCH=x86_64-unknown-linux-musl
+          ARCH=x86_64-unknown-linux-gnu
           TWEL_DATA_KEY=${{ secrets.TWEL_DATA_KEY }}
