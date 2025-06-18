@@ -3,7 +3,7 @@ use log::error;
 use serde::Deserialize;
 
 use crate::{fetch::StockFetcher, scanner::{ScannerCrossingMA, ScannerPerformance, ScannerRSI}};
-use crate::processor::{Strategy, StrategyCrossingMA, StrategyRSI};
+use crate::processor::{Strategy, StrategyCrossingMA, StrategyRSI, StrategyBollingerBands};
 use crate::converter::DfConverter;
 use crate::db::DbManager;
 
@@ -130,6 +130,35 @@ pub async fn get_best_performance_rsi(
     ).await
 }
 
+pub async fn get_bb_signal(
+    symbol: web::Path<String>,
+    query: Query<QueryParams>
+) -> HttpResponse {
+    fetch_and_process(
+        symbol.clone(), 
+        &query, 
+        |df_proc, query| {
+            let mut bb = StrategyBollingerBands::new(
+                                        df_proc.df.unwrap(), 
+                                        20
+                                );
+            match bb.calc_ma() {
+                Ok(_) => {
+                    // let response = DfConverter::crossingma_df_to_json(&bb.df.clone().unwrap());
+                    Ok("".to_string())
+                }
+                Err(e) => {
+                    error!("Error calculating signal: {}", e);
+                    Err(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Error calculating signal: {}", e)
+                    )))
+                }
+            }
+        }
+    ).await
+}
+
 async fn fetch_and_process<F>(
     symbol: String,
     query: &Query<QueryParams>,
@@ -240,3 +269,4 @@ async fn get_best_performance_ma(
         }
     ).await
 }
+

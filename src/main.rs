@@ -21,6 +21,7 @@ async fn main() -> std::io::Result<()> {
             .route("/sma/{symbol}", web::get().to(get_sma_signal))
             .route("/ewma/{symbol}", web::get().to(get_ewma_signal))
             .route("/rsi/{symbol}", web::get().to(get_rsi_signal))
+            .route("/bb/{symbol}", web::get().to(get_bb_signal))
             .route("/bestperf/sma/{symbol}", web::get().to(get_best_performance_sma))
             .route("/bestperf/ewma/{symbol}", web::get().to(get_best_performance_ewma))
             .route("/bestperf/rsi/{symbol}", web::get().to(get_best_performance_rsi))
