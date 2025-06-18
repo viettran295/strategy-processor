@@ -137,15 +137,15 @@ pub async fn get_bb_signal(
     fetch_and_process(
         symbol.clone(), 
         &query, 
-        |df_proc, query| {
+        |df_proc, _| {
             let mut bb = StrategyBollingerBands::new(
                                         df_proc.df.unwrap(), 
                                         20
                                 );
-            match bb.calc_ma() {
+            match bb.calc_signal() {
                 Ok(_) => {
-                    // let response = DfConverter::crossingma_df_to_json(&bb.df.clone().unwrap());
-                    Ok("".to_string())
+                    let response = DfConverter::bb_df_to_json(&bb.df.clone().unwrap());
+                    Ok(response)
                 }
                 Err(e) => {
                     error!("Error calculating signal: {}", e);

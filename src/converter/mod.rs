@@ -1,6 +1,7 @@
 mod df_converter;
 mod crossing_avg_conv;
 mod rsi_conv;
+mod bb_conv;
 
 pub use df_converter::DfConverter;
 pub use crossing_avg_conv::CrossingMAConverter;

@@ -1,5 +1,6 @@
+use crate::converter::bb_conv::BollingerBandsConverter;
 use crate::fetch::TwelveDataResponse;
-use crate::processor::{CrossingMAResponse, DfColumns, RSIResponse};
+use crate::processor::{BollingerBandsData, BollingerBandsResponse, CrossingMAResponse, DfColumns, RSIResponse};
 use crate::converter::CrossingMAConverter;
 
 use std::fmt::Debug;
@@ -108,9 +109,10 @@ impl DfConverter {
     }
 
     pub fn bb_df_to_json(df: &DataFrame) -> String {
-        let cols_response = Self::get_cols_info(&df, &[]);
-        let data_response = CrossingMAConverter::convert_rows(df);
-        let response = CrossingMAResponse::new(cols_response, data_response);
+        let exclude_cols = ["Std"];
+        let cols_response = Self::get_cols_info(&df, &exclude_cols);
+        let data_response = BollingerBandsConverter::convert_rows(df);
+        let response = BollingerBandsResponse::new(cols_response, data_response);
         return serde_json::to_string(&response).unwrap();
     }
 }
