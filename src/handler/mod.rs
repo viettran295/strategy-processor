@@ -3,7 +3,7 @@ use log::error;
 use serde::Deserialize;
 
 use crate::{fetch::StockFetcher, scanner::{ScannerCrossingMA, ScannerPerformance, ScannerRSI}};
-use crate::processor::{Strategy, StrategyCrossingMA, StrategyRSI, StrategyBollingerBands};
+use crate::strategy::{Strategy, StrategyCrossingMA, StrategyRSI, StrategyBollingerBands};
 use crate::converter::DfConverter;
 use crate::db::DbManager;
 

@@ -1,6 +1,45 @@
-use crate::processor::BollingerBandsData;
 use polars::prelude::*;
+use serde::{Deserialize, Serialize};
 
+use super::base::{DfBaseData, DfColumns};
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct BollingerBandsData {
+    #[serde(flatten)]
+    pub base_data: DfBaseData,
+    pub ma_windows: String,
+    pub upper_band: String,
+    pub lower_band: String,
+    pub signal: String
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct BollingerBandsResponse {
+    pub columns: DfColumns,
+    pub data: Vec<BollingerBandsData>,
+}
+
+impl BollingerBandsData {
+    pub fn new() -> Self {
+        let base_data = DfBaseData::new();
+        BollingerBandsData { 
+            base_data,
+            ma_windows: String::new(),
+            upper_band: String::new(),
+            lower_band: String::new(),
+            signal: String::new()
+        }
+    }
+}
+
+impl BollingerBandsResponse {
+    pub fn new(df_columns: DfColumns, df_data: Vec<BollingerBandsData>) -> Self {
+        BollingerBandsResponse {
+            columns: df_columns,
+            data: df_data
+        }
+    }
+}
 pub struct BollingerBandsConverter;
 
 impl BollingerBandsConverter {

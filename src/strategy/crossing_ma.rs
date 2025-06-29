@@ -1,7 +1,6 @@
 use polars::prelude::*;
 use log::info;
 use serde::{Deserialize, Serialize};
-use crate::processor::base::{DfBaseData, DfColumns};
 
 use super::Strategy;
 
@@ -13,40 +12,6 @@ pub struct StrategyCrossingMA {
     pub df: Option<DataFrame>,
     pub sma_options: RollingOptionsFixedWindow,
     pub ewma_options: EWMOptions,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct CrossingMAData {
-    #[serde(flatten)]
-    pub base_data: DfBaseData,
-    pub ma_windows: Vec<String>,
-    pub signal: String
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct CrossingMAResponse {
-    pub columns: DfColumns,
-    pub data: Vec<CrossingMAData>,
-}
-
-impl CrossingMAData {
-    pub fn new() -> Self {
-        let base_data = DfBaseData::new();
-        CrossingMAData { 
-            base_data,
-            ma_windows: Vec::new(),
-            signal: String::new()
-        }
-    }
-}
-
-impl CrossingMAResponse {
-    pub fn new(df_columns: DfColumns, df_data: Vec<CrossingMAData>) -> Self {
-        CrossingMAResponse {
-            columns: df_columns,
-            data: df_data
-        }
-    }
 }
 
 impl StrategyCrossingMA {

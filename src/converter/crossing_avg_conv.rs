@@ -1,5 +1,41 @@
-use crate::processor::CrossingMAData;
 use polars::prelude::*;
+use serde::{Deserialize, Serialize};
+
+use super::base::{DfBaseData, DfColumns};
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct CrossingMAData {
+    #[serde(flatten)]
+    pub base_data: DfBaseData,
+    pub ma_windows: Vec<String>,
+    pub signal: String
+}
+
+impl CrossingMAData {
+    pub fn new() -> Self {
+        let base_data = DfBaseData::new();
+        CrossingMAData { 
+            base_data,
+            ma_windows: Vec::new(),
+            signal: String::new()
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct CrossingMAResponse {
+    pub columns: DfColumns,
+    pub data: Vec<CrossingMAData>,
+}
+
+impl CrossingMAResponse {
+    pub fn new(df_columns: DfColumns, df_data: Vec<CrossingMAData>) -> Self {
+        CrossingMAResponse {
+            columns: df_columns,
+            data: df_data
+        }
+    }
+}
 
 pub struct CrossingMAConverter;
 

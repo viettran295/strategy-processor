@@ -1,14 +1,14 @@
-use crate::converter::bb_conv::BollingerBandsConverter;
-use crate::fetch::TwelveDataResponse;
-use crate::processor::{BollingerBandsData, BollingerBandsResponse, CrossingMAResponse, DfColumns, RSIResponse};
-use crate::converter::CrossingMAConverter;
-
 use std::fmt::Debug;
-
 use log::{error, info};
 use polars::prelude::*;
 
-use super::RSIConverter;
+use crate::fetch::TwelveDataResponse;
+use super::base::DfColumns;
+use super::{
+            CrossingMAConverter, CrossingMAResponse, 
+            RSIConverter, RSIResponse,
+            BollingerBandsConverter, BollingerBandsResponse
+        };
 
 #[derive(Clone, Debug)]
 pub struct DfConverter {

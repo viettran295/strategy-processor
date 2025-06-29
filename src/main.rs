@@ -1,6 +1,6 @@
 mod config;
 mod fetch;
-mod processor;
+mod strategy;
 mod handler;
 mod converter;
 mod scanner;

@@ -2,7 +2,7 @@ use log::{debug, error};
 use polars::prelude::*;
 use regex::Regex;
 
-use crate::processor::{Strategy, StrategyCrossingMA};
+use crate::strategy::{Strategy, StrategyCrossingMA};
 
 use super::{Backtest, ScannerPerformance};
 

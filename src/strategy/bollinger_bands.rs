@@ -1,25 +1,8 @@
 use polars::{prelude::*};
-use log::{info, debug};
+use log::info;
 use serde::{Deserialize, Serialize};
-use crate::processor::base::{DfBaseData, DfColumns};
 
 use super::Strategy;
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct BollingerBandsData {
-    #[serde(flatten)]
-    pub base_data: DfBaseData,
-    pub ma_windows: String,
-    pub upper_band: String,
-    pub lower_band: String,
-    pub signal: String
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct BollingerBandsResponse {
-    pub columns: DfColumns,
-    pub data: Vec<BollingerBandsData>,
-}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct StrategyBollingerBands {
@@ -27,28 +10,6 @@ pub struct StrategyBollingerBands {
     pub std_bands: usize,
     pub df: Option<DataFrame>,
     pub sma_options: RollingOptionsFixedWindow,
-}
-
-impl BollingerBandsData {
-    pub fn new() -> Self {
-        let base_data = DfBaseData::new();
-        BollingerBandsData { 
-            base_data,
-            ma_windows: String::new(),
-            upper_band: String::new(),
-            lower_band: String::new(),
-            signal: String::new()
-        }
-    }
-}
-
-impl BollingerBandsResponse {
-    pub fn new(df_columns: DfColumns, df_data: Vec<BollingerBandsData>) -> Self {
-        BollingerBandsResponse {
-            columns: df_columns,
-            data: df_data
-        }
-    }
 }
 
 impl StrategyBollingerBands {

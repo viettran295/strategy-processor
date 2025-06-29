@@ -1,6 +1,38 @@
-use crate::processor::RSIData;
 use polars::prelude::*;
+use serde::{Deserialize, Serialize};
 
+use super::base::{DfBaseData, DfColumns};
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct RSIData {
+    #[serde(flatten)]
+    pub base_data: DfBaseData,
+    pub rsi: String,
+    pub signal: String
+}
+
+impl RSIData {
+    pub fn new() -> Self {
+        let base_data = DfBaseData::new();
+        RSIData {
+            base_data,
+            rsi: String::new(),
+            signal: String::new(),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct RSIResponse {
+    pub columns: DfColumns,
+    pub data: Vec<RSIData>,
+}
+
+impl RSIResponse {
+    pub fn new(columns: DfColumns, data: Vec<RSIData>) -> Self {
+        RSIResponse { columns, data }
+    }
+}
 pub struct RSIConverter;
 
 impl RSIConverter {

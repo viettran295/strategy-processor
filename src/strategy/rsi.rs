@@ -1,23 +1,8 @@
 use polars::prelude::*;
 use log::{info, debug};
 use serde::{Deserialize, Serialize};
-use crate::processor::base::{DfBaseData, DfColumns};
 
 use super::Strategy;
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct RSIData {
-    #[serde(flatten)]
-    pub base_data: DfBaseData,
-    pub rsi: String,
-    pub signal: String
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct RSIResponse {
-    pub columns: DfColumns,
-    pub data: Vec<RSIData>,
-}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct StrategyRSI {
@@ -25,23 +10,6 @@ pub struct StrategyRSI {
     pub upper_bound: usize,
     pub lower_bound: usize,
     pub sma_options: RollingOptionsFixedWindow,
-}
-
-impl RSIData {
-    pub fn new() -> Self {
-        let base_data = DfBaseData::new();
-        RSIData {
-            base_data,
-            rsi: String::new(),
-            signal: String::new(),
-        }
-    }
-}
-
-impl RSIResponse {
-    pub fn new(columns: DfColumns, data: Vec<RSIData>) -> Self {
-        RSIResponse { columns, data }
-    }
 }
 
 impl StrategyRSI {

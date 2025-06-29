@@ -1,7 +1,7 @@
 use log::{debug, error};
 use regex::Regex;
 
-use crate::processor::{Strategy, StrategyRSI};
+use crate::strategy::{Strategy, StrategyRSI};
 
 use super::{Backtest, ScannerPerformance};
 
