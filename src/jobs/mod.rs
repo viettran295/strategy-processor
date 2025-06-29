@@ -7,7 +7,7 @@ use crate::db::DbManager;
 
 pub async fn remove_cache_db() {
     let db = DbManager::default();
-    let schedule = Schedule::from_str("0 7 * * * *").unwrap();
+    let schedule = Schedule::from_str("0 0 7 * * *").unwrap();
     let mut upcoming = schedule.upcoming(Utc);
     loop {
         if let Some(next) = upcoming.next() {
