@@ -34,10 +34,16 @@ impl StrategyRSI {
         }
     }
     
-    pub fn update_params(&mut self, period: usize, upper_bound: usize, lower_bound: usize) {
-        self.sma_options.window_size = period;
-        self.upper_bound = upper_bound;
-        self.lower_bound = lower_bound;
+    pub fn update_params(&mut self, period: Option<usize>, upper_bound: Option<usize>, lower_bound: Option<usize>) {
+        if let Some(p) = period {
+            self.sma_options.window_size = p;
+        }
+        if let Some(u) = upper_bound {
+            self.upper_bound = u;
+        }
+        if let Some(l) = lower_bound {
+            self.lower_bound = l;
+        }
     }
     
     pub fn calc_rsi(&mut self) -> Result<DataFrame, Box<dyn std::error::Error>> {

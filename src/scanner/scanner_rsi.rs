@@ -1,5 +1,8 @@
 use log::{debug, error};
+use polars::frame::DataFrame;
 use regex::Regex;
+use rayon::scope;
+use std::sync::mpsc;
 
 use crate::strategy::{Strategy, StrategyRSI};
 
@@ -28,14 +31,25 @@ impl ScannerRSI {
 impl ScannerPerformance for ScannerRSI {
     fn scan_performance(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let step = 2;
-        for ma_window in (self.from_ma..(self.to_ma)).step_by(step) {
-            self.strategy.update_params(ma_window, 80, 20);
-            self.strategy.calc_rsi()?;
-            self.strategy.calc_signal()?;
-        }
-        for col in self.strategy.df.as_ref().unwrap().get_column_names() {
-            if col.contains(self.sig_col.as_str()) {
-                self.backtest.execute(self.strategy.df.as_ref().unwrap(), col);
+        let (tx, rx): (mpsc::Sender<DataFrame>, mpsc::Receiver<DataFrame>) = mpsc::channel();
+        let strategy = self.strategy.clone();
+        scope(|s| {
+            for ma_window in (self.from_ma..(self.to_ma)).step_by(step) {
+                let mut strategy_clone = strategy.clone();
+                let tx_clone = tx.clone();
+                s.spawn(move |_| {
+                    strategy_clone.update_params(Some(ma_window), None, None);
+                    let df = strategy_clone.calc_signal().unwrap();
+                    tx_clone.send(df).unwrap();
+                });
+            }
+        });
+        drop(tx);
+        for df in rx {
+            for col in df.get_column_names() {
+                if col.contains(self.sig_col.as_str()) {
+                    self.backtest.execute(&df, col);
+                }
             }
         }
         return Ok(());
@@ -64,7 +78,10 @@ impl ScannerPerformance for ScannerRSI {
         if let Some(captures) = re.captures(best_perf_col.as_str()) {            
             let ma_window = captures.get(1).unwrap().as_str();
             let rsi_col = format!("RSI_{}", ma_window);
-            let df = self.strategy.df.as_ref()?;
+
+            self.strategy.update_params(Some(ma_window.parse().unwrap()), None, None);
+            let df = self.strategy.calc_signal().unwrap();
+            
             let cols = vec!["datetime".to_string(), "high".to_string(), "low".to_string(),
                                         "open".to_string(), "close".to_string(), rsi_col, best_perf_col];
             match df.select(cols) {
