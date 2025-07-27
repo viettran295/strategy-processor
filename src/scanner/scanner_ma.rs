@@ -1,6 +1,8 @@
 use log::{debug, error};
 use polars::prelude::*;
 use regex::Regex;
+use rayon::scope;
+use std::sync::mpsc;
 
 use crate::strategy::{Strategy, StrategyCrossingMA};
 
@@ -29,15 +31,28 @@ impl ScannerCrossingMA {
 impl ScannerPerformance for ScannerCrossingMA {
     fn scan_performance(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let step = 10;
-        for short_ma in (self.from_ma..(self.to_ma - 1)).step_by(step) {
-            for long_ma in ((short_ma + step)..self.to_ma).step_by(step) {
-                self.strategy.update_params(short_ma, long_ma, self.strategy.ma_type.clone());
-                self.strategy.calc_signal()?;
-            };
-        }
-        for col in self.strategy.df.as_ref().unwrap().get_column_names() {
-            if col.contains(self.sig_col.as_str()) {
-                self.backtest.execute(self.strategy.df.as_ref().unwrap(), col);
+        let (tx, rx): (mpsc::Sender<DataFrame>, mpsc::Receiver<DataFrame>) = mpsc::channel();
+        let strategy = self.strategy.clone();
+        scope(|s| {
+            for short_ma in (self.from_ma..(self.to_ma - 1)).step_by(step) {
+                for long_ma in ((short_ma + step)..self.to_ma).step_by(step) {
+                    let mut strategy_clone = strategy.clone();
+                    let ma_type_clone = strategy.ma_type.clone();
+                    let tx_clone = tx.clone();
+                    s.spawn(move |_| {
+                            strategy_clone.update_params(Some(short_ma), Some(long_ma), Some(ma_type_clone));
+                            let df = strategy_clone.calc_signal().unwrap();
+                            tx_clone.send(df).unwrap();
+                        });
+                }
+            }
+        });
+        drop(tx);
+        for df in rx {
+            for col in df.get_column_names() {
+                if col.contains(self.sig_col.as_str()) {
+                    self.backtest.execute(&df, col);
+                }
             }
         }
         return Ok(());
@@ -68,8 +83,12 @@ impl ScannerPerformance for ScannerCrossingMA {
             let short_ma = format!("{}_{}", self.strategy.ma_type, short_win);
             let long_win = captures.get(2).unwrap().as_str();
             let long_ma = format!("{}_{}", self.strategy.ma_type, long_win);
-            
-            let df = self.strategy.df.as_ref()?;
+            self.strategy.update_params(
+                Some(short_win.parse().unwrap()), 
+                Some(long_win.parse().unwrap()), 
+                None
+            );
+            let df = self.strategy.calc_signal().unwrap();
             let cols = vec!["datetime".to_string(), "high".to_string(), "low".to_string(),
                             "open".to_string(), "close".to_string(), 
                             short_ma.to_string(), long_ma.to_string(), best_perf_col];

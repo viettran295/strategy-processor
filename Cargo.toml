@@ -20,3 +20,4 @@ duckdb = { version = "1.3.0", features = ["bundled"] }
 indexmap = "2.9.0"
 anyhow = "1.0.98"
 cron = "0.15.0"
+rayon = "1.10.0"

@@ -40,10 +40,16 @@ impl StrategyCrossingMA {
         }
     }
     
-    pub fn update_params(&mut self, short_ma: usize, long_ma: usize, ma_type: String) {
-        self.short_ma = short_ma;
-        self.long_ma = long_ma;
-        self.ma_type = ma_type;
+    pub fn update_params(&mut self, short_ma: Option<usize>, long_ma: Option<usize>, ma_type: Option<String>) {
+        if let Some(s_ma) = short_ma {
+            self.short_ma = s_ma;
+        }
+        if let Some(l_ma) = long_ma {
+            self.long_ma = l_ma;
+        }
+        if let Some(ma_type) = ma_type {
+            self.ma_type = ma_type;
+        }
     }
     
     pub fn calc_ma(&mut self, window_size: usize, ma_name: String) -> Result<DataFrame, Box<dyn std::error::Error>> {
