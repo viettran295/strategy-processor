@@ -29,13 +29,13 @@ impl StrategyBollingerBands {
         }
     }
     
-    pub fn calc_ma(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn calc_ma(&mut self) -> Result<DataFrame, Box<dyn std::error::Error>> {
         match &mut self.df {
             Some(df) => {
                 let ma_type = format!("SMA_{}", self.ma_window);
                 let std_col = "Std";
                 self.sma_options.window_size = self.ma_window;
-                self.df = df.clone()
+                let mut df_result = df.clone()
                     .lazy()
                     .with_column(
                         col("close").rolling_mean(self.sma_options.clone())
@@ -43,10 +43,8 @@ impl StrategyBollingerBands {
                                     // Shift the calculated moving average to the corresponding datetime
                                     .shift((-(self.ma_window as i32)).into()),
                     )
-                    .collect().ok();
-                self.df = self.df.as_ref()
-                    .unwrap()
-                    .clone()
+                    .collect().ok().unwrap();
+                df_result = df_result.clone()
                     .lazy()
                     .with_column(
                         col(ma_type.clone()).rolling_std(self.sma_options.clone()).alias(std_col)
@@ -59,10 +57,10 @@ impl StrategyBollingerBands {
                         (col(ma_type.clone()) - col(std_col) * lit(self.std_bands as f32))
                             .alias(format!("Lower_{}_SMA_{}", self.std_bands, self.ma_window))
                     )
-                    .collect().ok();
+                    .collect().ok().unwrap();
             info!("Calculated bollinger bands {}", ma_type.clone());
 
-            return Ok(());
+            return Ok(df_result);
         },
             None => return Err("Dataframe is None".into())
         }
@@ -70,7 +68,7 @@ impl StrategyBollingerBands {
 }
 
 impl Strategy for StrategyBollingerBands {
-    fn calc_signal(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    fn calc_signal(&mut self) -> Result<DataFrame, Box<dyn std::error::Error>> {
         if self.df.is_none() {
             return Err("Dataframe is None".into());
         }
@@ -78,16 +76,9 @@ impl Strategy for StrategyBollingerBands {
         let signal_name = format!("Sig_SMA_{}_Std_{}", self.ma_window, self.std_bands);
         let upper_band_name = format!("Upper_{}_SMA_{}", self.std_bands, self.ma_window);
         let lower_band_name = format!("Lower_{}_SMA_{}", self.std_bands, self.ma_window);
-
-        // Calculate MAs up front
-        if ! self.df.as_ref().unwrap().column(upper_band_name.as_str()).is_ok() || 
-            ! self.df.as_ref().unwrap().column(lower_band_name.as_str()).is_ok() {
-            self.calc_ma()?;
-        }
-        // Get reference to current dataframe
-        let df = self.df.as_ref().unwrap();
+        let mut df_result = self.calc_ma()?;
         
-        self.df = df.clone()
+        df_result = df_result.clone()
             .lazy()
             .with_columns([
                 // Sell signal
@@ -103,8 +94,8 @@ impl Strategy for StrategyBollingerBands {
                 .otherwise(lit(0))
                 .alias(&signal_name)
             ])
-            .collect().ok();
+            .collect().ok().unwrap();
         info!("Calculated bollinger bands signal: {}", signal_name);
-        Ok(())
+        Ok(df_result)
     }
 }

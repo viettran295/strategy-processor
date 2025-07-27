@@ -69,18 +69,18 @@ pub async fn get_rsi_signal(
             let upper_bound = 80;
             let lower_bound = 20;
             let mut rsi_str = StrategyRSI::new(df_proc.df.unwrap(), ma_window, upper_bound, lower_bound);
-            match rsi_str.calc_rsi() {
-                Ok(_) => {
-                    rsi_str.calc_signal()?;
-                    let response = DfConverter::rsi_df_to_json(&rsi_str.df.clone().unwrap());
+            let df_rsi = rsi_str.calc_signal();
+            match df_rsi {
+                Ok(df) => {
+                    let response = DfConverter::rsi_df_to_json(&df);
                     return Ok(response);
                 }
                 Err(e) => {
-                    error!("Error calculating RSI stock prices: {}", e);
-                    return Err(Box::new(std::io::Error::new(
-                                std::io::ErrorKind::Other,
-                                format!("Error calculating signal: {}", e)
-                            )));
+                    error!("Error calculating signal: {}", e);
+                    Err(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Error calculating signal: {}", e)
+                    )))
                 }
             }
         }
@@ -142,9 +142,10 @@ pub async fn get_bb_signal(
                                         df_proc.df.unwrap(), 
                                         20
                                 );
-            match bb.calc_signal() {
-                Ok(_) => {
-                    let response = DfConverter::bb_df_to_json(&bb.df.clone().unwrap());
+            let df_bb = bb.calc_signal();
+            match df_bb {
+                Ok(df) => {
+                    let response = DfConverter::bb_df_to_json(&df);
                     Ok(response)
                 }
                 Err(e) => {
@@ -218,9 +219,10 @@ async fn get_ma_signal(
                                         long_ma, 
                                         ma_type_owned
                                 );
-            match crs_avg.calc_signal() {
-                Ok(_) => {
-                    let response = DfConverter::crossingma_df_to_json(&crs_avg.df.clone().unwrap());
+            let df_ma = crs_avg.calc_signal();
+            match df_ma {
+                Ok(df) => {
+                    let response = DfConverter::crossingma_df_to_json(&df);
                     Ok(response)
                 }
                 Err(e) => {

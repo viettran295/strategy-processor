@@ -46,14 +46,15 @@ impl StrategyCrossingMA {
         self.ma_type = ma_type;
     }
     
-    pub fn calc_ma(&mut self, window_size: usize, ma_name: String) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn calc_ma(&mut self, window_size: usize, ma_name: String) -> Result<DataFrame, Box<dyn std::error::Error>> {
         match &mut self.df {
             Some(df) => {
+                let mut df_result = DataFrame::empty();
                 // Implementation of calculating signal for moving average strategy
                 if self.ma_type == "SMA" {
                     self.sma_options.window_size = window_size;
                     self.sma_options.min_periods = window_size;
-                    self.df = df.clone()
+                    df_result = df.clone()
                         .lazy()
                         .with_column(
                             col("close").rolling_mean(self.sma_options.clone())
@@ -61,21 +62,21 @@ impl StrategyCrossingMA {
                                         // Shift the calculated moving average to the corresponding datetime
                                         .shift((-(window_size as i32)).into()),
                         )
-                        .collect().ok();
+                        .collect().ok().unwrap();
                 } else if self.ma_type == "EWMA" {
                     self.ewma_options.alpha = 2.0 / (window_size + 1) as f64;
                     self.ewma_options.min_periods = window_size;
-                    self.df = df.clone()
+                    df_result = df.clone()
                         .lazy()
                         .with_column(
                             col("close").ewm_mean(self.ewma_options.clone())
                                         .alias(ma_name.clone())
                                         .shift((-(window_size as i32)).into()),
                         )
-                        .collect().ok();
+                        .collect().ok().unwrap();
                 }
                 info!("Calculated {}", ma_name);
-                return Ok(());
+                return Ok(df_result);
             },
             None => return Err("Dataframe is None".into())
         }
@@ -83,7 +84,7 @@ impl StrategyCrossingMA {
 }
 
 impl Strategy for StrategyCrossingMA {
-    fn calc_signal(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    fn calc_signal(&mut self) -> Result<DataFrame, Box<dyn std::error::Error>> {
         if self.df.is_none() {
             return Err("Dataframe is None".into());
         }
@@ -94,17 +95,13 @@ impl Strategy for StrategyCrossingMA {
         let shift_days = 1;
 
         // Calculate MAs up front
-        if ! self.df.as_ref().unwrap().column(short_ma_name.as_str()).is_ok() {
-            self.calc_ma(self.short_ma, short_ma_name.clone())?;
-        }
-        if ! self.df.as_ref().unwrap().column(long_ma_name.as_str()).is_ok() {
-            self.calc_ma(self.long_ma, long_ma_name.clone())?;
-        }
-
-        // Get reference to current dataframe
-        let df = self.df.as_ref().unwrap();
+        let mut short_ma_df = self.calc_ma(self.short_ma, short_ma_name.clone())?;
+        let long_ma_df = self.calc_ma(self.long_ma, long_ma_name.clone())?;
+        let mut df_result = short_ma_df.with_column(
+            long_ma_df.column(long_ma_name.as_ref())?.clone()
+        ).unwrap().clone();
         
-        self.df = df.clone()
+        df_result = df_result
             .lazy()
             .with_columns([
                 // Sell signal
@@ -124,8 +121,8 @@ impl Strategy for StrategyCrossingMA {
                 .otherwise(lit(0))
                 .alias(&signal_name)
             ])
-            .collect().ok();
+            .collect()?;
         info!("Calculated crossing average signal: {}", signal_name);
-        Ok(())
+        Ok(df_result)
     }
 }
