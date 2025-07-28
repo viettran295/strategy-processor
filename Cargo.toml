@@ -21,3 +21,8 @@ indexmap = "2.9.0"
 anyhow = "1.0.98"
 cron = "0.15.0"
 rayon = "1.10.0"
+
+[profile.release]
+debug = true
+lto = "off"
+opt-level = 2
