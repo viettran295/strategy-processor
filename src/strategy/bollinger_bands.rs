@@ -29,6 +29,15 @@ impl StrategyBollingerBands {
         }
     }
     
+    pub fn update_param(&mut self, ma_window: Option<usize>, std: Option<usize>) {
+        if let Some(ma_window) = ma_window {
+            self.ma_window = ma_window;
+        }
+        if let Some(std) = std {
+            self.std_bands = std;
+        }
+    }
+    
     pub fn calc_ma(&mut self) -> Result<DataFrame, Box<dyn std::error::Error>> {
         match &mut self.df {
             Some(df) => {
@@ -51,11 +60,11 @@ impl StrategyBollingerBands {
                     )
                     .with_column(
                         (col(ma_type.clone()) + col(std_col) * lit(self.std_bands as f32))
-                            .alias(format!("Upper_{}_SMA_{}", self.std_bands, self.ma_window))
+                            .alias(format!("Upper_SMA_{}_Std_{}", self.ma_window, self.std_bands))
                     )
                     .with_column(
                         (col(ma_type.clone()) - col(std_col) * lit(self.std_bands as f32))
-                            .alias(format!("Lower_{}_SMA_{}", self.std_bands, self.ma_window))
+                            .alias(format!("Lower_SMA_{}_Std_{}", self.ma_window, self.std_bands))
                     )
                     .collect().ok().unwrap();
             info!("Calculated bollinger bands {}", ma_type.clone());
@@ -74,8 +83,8 @@ impl Strategy for StrategyBollingerBands {
         }
 
         let signal_name = format!("Sig_SMA_{}_Std_{}", self.ma_window, self.std_bands);
-        let upper_band_name = format!("Upper_{}_SMA_{}", self.std_bands, self.ma_window);
-        let lower_band_name = format!("Lower_{}_SMA_{}", self.std_bands, self.ma_window);
+        let upper_band_name = format!("Upper_SMA_{}_Std_{}", self.ma_window, self.std_bands);
+        let lower_band_name = format!("Lower_SMA_{}_Std_{}", self.ma_window, self.std_bands);
         let mut df_result = self.calc_ma()?;
         
         df_result = df_result.clone()
