@@ -2,7 +2,7 @@ use actix_web::{web::{self, Query}, HttpResponse};
 use log::error;
 use serde::Deserialize;
 
-use crate::{fetch::StockFetcher, scanner::{ScannerCrossingMA, ScannerPerformance, ScannerRSI}};
+use crate::{fetch::StockFetcher, scanner::{ScannerBollingerBands, ScannerCrossingMA, ScannerPerformance, ScannerRSI}};
 use crate::strategy::{Strategy, StrategyCrossingMA, StrategyRSI, StrategyBollingerBands};
 use crate::converter::DfConverter;
 use crate::db::DbManager;
@@ -128,6 +128,31 @@ pub async fn get_best_performance_rsi(
             }
         }
     ).await
+}
+
+pub async fn get_best_performance_bb (
+    symbol: web::Path<String>,
+    query: Query<QueryParams>
+) -> HttpResponse {
+    fetch_and_process(
+        symbol.clone(),
+        &query, 
+        |df_proc, _| {
+            let from_ma = 5;
+            let to_ma = 200;
+            let bb = StrategyBollingerBands::new(df_proc.df.unwrap(), from_ma);
+            let mut scanner = ScannerBollingerBands::new(bb, from_ma, to_ma);
+            match scanner.get_best_performance_df() {
+                Some(df) => {
+                    let response = DfConverter::rsi_df_to_json(&df);
+                    Ok(response)
+                },
+                None => Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "No Bollinger bands best performance found"
+                )))
+            }
+        }).await
 }
 
 pub async fn get_bb_signal(

@@ -25,6 +25,7 @@ async fn main() -> std::io::Result<()> {
             .route("/bestperf/sma/{symbol}", web::get().to(get_best_performance_sma))
             .route("/bestperf/ewma/{symbol}", web::get().to(get_best_performance_ewma))
             .route("/bestperf/rsi/{symbol}", web::get().to(get_best_performance_rsi))
+            .route("/bestperf/bb/{symbol}", web::get().to(get_best_performance_bb))
     })
     .bind("0.0.0.0:8000")?
     .run()
