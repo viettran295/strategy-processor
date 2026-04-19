@@ -1,5 +1,5 @@
 [package]
-name = "str-proc"
+name = "strategy-processor"
 version = "0.1.0"
 edition = "2024"
 
@@ -23,6 +23,7 @@ cron = "0.15.0"
 rayon = "1.10.0"
 
 [profile.release]
-debug = true
-lto = "off"
-opt-level = 2
+strip = true      # Automatically removes debug symbols
+opt-level = "z"   # Optimize for size
+lto = true        # Link Time Optimization
+codegen-units = 1 # Better optimization
