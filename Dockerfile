@@ -16,12 +16,11 @@ COPY . .
 RUN cargo build --release --verbose
 
 # ---------------------------------
-# Arm architecture image for deployment machine
-FROM gcr.io/distroless/cc-debian13@sha256:d4ee60642acd6531185413d51c4c9a709f07dbd69fb400788950bc6983b80574
+FROM gcr.io/distroless/cc-debian13@sha256:56aaf20ab2523a346a67c8e8f8e8dabe447447d0788b82284d14ad79cd5f93cc
 # Copy ca-certs and openssl 
 COPY --from=builder /etc/ssl/certs /etc/ssl/certs
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libssl.so.3    /usr/lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/*-linux-gnu/libssl.so.3    /usr/lib/
+COPY --from=builder /usr/lib/*-linux-gnu/libcrypto.so.3 /usr/lib/
 
 USER nonroot
 WORKDIR /app
